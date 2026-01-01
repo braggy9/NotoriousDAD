@@ -141,28 +141,76 @@ export async function POST(request: NextRequest) {
 
     const user: SpotifyUser = await userResponse.json();
 
-    // Load MIK matched tracks or fall back to Spotify library
+    // ============================================
+    // BUILD TRACK POOL FROM MULTIPLE SOURCES
+    // ============================================
+    // We use ALL sources, not just MIK. MIK provides enhanced data when available.
     let availableTracks: SpotifyTrackWithFeatures[] = [];
+    const trackIdSet = new Set<string>(); // Prevent duplicates
 
+    // Source 1: MIK matched tracks (has professional key/BPM data)
     try {
       const data = await fs.readFile(STORAGE_PATH, 'utf-8');
       const matchedData = JSON.parse(data);
-      availableTracks = matchedData.tracks.map((t: any) => t.spotifyTrack);
-      console.log(`Loaded ${availableTracks.length} MIK-matched tracks`);
-    } catch (error) {
-      console.log('No MIK data found, using Spotify library');
+      const mikTracks = matchedData.tracks.map((t: any) => ({
+        ...t.spotifyTrack,
+        mikData: t.mikData,
+        source: 'mik-library'
+      }));
+      for (const track of mikTracks) {
+        if (!trackIdSet.has(track.id)) {
+          availableTracks.push(track);
+          trackIdSet.add(track.id);
+        }
+      }
+      console.log(`📚 Source 1: ${mikTracks.length} MIK-matched tracks`);
+    } catch {
+      console.log('ℹ️ No MIK data found');
+    }
 
-      // Fetch user's top tracks
+    // Source 2: User's Liked Songs (up to 200)
+    console.log('💚 Fetching user liked songs...');
+    for (let offset = 0; offset < 200; offset += 50) {
+      try {
+        const likedResponse = await fetch(
+          `https://api.spotify.com/v1/me/tracks?limit=50&offset=${offset}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (likedResponse.ok) {
+          const likedData = await likedResponse.json();
+          for (const item of likedData.items || []) {
+            if (item.track && !trackIdSet.has(item.track.id)) {
+              availableTracks.push({ ...item.track, source: 'liked-songs' });
+              trackIdSet.add(item.track.id);
+            }
+          }
+          if ((likedData.items?.length || 0) < 50) break; // No more tracks
+        }
+      } catch { break; }
+    }
+    console.log(`💚 Source 2: ${availableTracks.filter(t => t.source === 'liked-songs').length} liked songs added`);
+
+    // Source 3: User's Top Tracks (personalization)
+    try {
       const topTracksResponse = await fetch(
         'https://api.spotify.com/v1/me/top/tracks?limit=50&time_range=medium_term',
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
-
       if (topTracksResponse.ok) {
-        const topTracksData = await topTracksResponse.json();
-        availableTracks = topTracksData.items;
+        const topData = await topTracksResponse.json();
+        let added = 0;
+        for (const track of topData.items || []) {
+          if (!trackIdSet.has(track.id)) {
+            availableTracks.push({ ...track, source: 'top-tracks' });
+            trackIdSet.add(track.id);
+            added++;
+          }
+        }
+        console.log(`⭐ Source 3: ${added} top tracks added`);
       }
-    }
+    } catch { }
+
+    console.log(`📦 Base pool: ${availableTracks.length} tracks from user sources`);
 
     // Fetch audio features for all tracks
     const trackIds = availableTracks.map(t => t.id).filter(Boolean);
