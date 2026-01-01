@@ -521,7 +521,7 @@ export async function POST(request: NextRequest) {
       const characteristics = extractPlaylistCharacteristics(optimizedPlaylist, constraints, prompt);
       const nameResult = await generatePlaylistName(characteristics, prompt, 'creative');
 
-      playlistName = `${nameResult.emoji} ${nameResult.withBranding}`;
+      playlistName = `🎧 DAD: ${nameResult.withBranding}`;
       playlistDescription = `${nameResult.description}\n\n🤖 2-Pass AI Curated • ${quality.harmonicMixPercentage}% harmonic • Score: ${quality.avgTransitionScore}/100 • djay Pro optimized`;
 
       console.log(`✓ Generated name: "${playlistName}"`);
@@ -529,7 +529,7 @@ export async function POST(request: NextRequest) {
       console.warn('⚠️  Smart naming failed, using fallback:', error);
       const characteristics = extractPlaylistCharacteristics(optimizedPlaylist, constraints, prompt);
       const fallback = generateSimpleName(characteristics, prompt);
-      playlistName = `${fallback.emoji} ${fallback.withBranding}`;
+      playlistName = `🎧 DAD: ${fallback.withBranding}`;
       playlistDescription = `${fallback.description}\n\n🤖 2-Pass AI Curated • ${quality.harmonicMixPercentage}% harmonic • Score: ${quality.avgTransitionScore}/100`;
     }
 

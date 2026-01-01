@@ -127,15 +127,17 @@ ${taskList.join('\n')}
 - 💚 Liked songs = user-approved vibes
 - ⭐ Top artists = user preferences
 
-## ARTIST VARIETY (CRITICAL FOR DJ SETS):
-Real DJ sets feature MANY artists, not just 3-4. A great mix weaves between:
-- **Include artists**: Feature them (3-5 tracks each is plenty), but they should NOT dominate
-- **Discovery tracks**: Related artists, recommendations, liked songs - these are what make a set INTERESTING
-- **Mix it up**: A 2-hour set with only Fred again/Rufus/Disclosure sounds repetitive - that's BAD DJing
+## ARTIST VARIETY (MANDATORY):
+⚠️ CRITICAL: You MUST include tracks from AT LEAST 10-15 DIFFERENT artists.
+A playlist with only 3-4 artists is UNACCEPTABLE - that's not a DJ mix, that's a single artist album.
 
-Think like a festival DJ: you play SOME tracks from headliners but most of the set is discovering new sounds that FIT the vibe.
+Rules:
+- Include artists: Use 3-5 tracks each MAX from the requested Include artists
+- The REST of the playlist MUST come from OTHER artists in the pool
+- Scan the track list - there are HUNDREDS of different artists available
+- A 30-track playlist should have 15+ different artists minimum
 
-NO quotas - but aim for rich variety. 40-60% from Include artists, rest from discovery pool.
+VARIETY CHECK: Before outputting, count unique artists. If less than 10 different artists, go back and add more variety!
 
 ## OUTPUT:
 Respond with ONLY a JSON array of track IDs in optimal play order.
@@ -185,7 +187,40 @@ Order matters - arrange for best transitions!
     throw new Error('Claude failed to generate valid track selection');
   }
 
-  return selectedIds;
+  // Create a set of valid track IDs for validation
+  const validIds = new Set(availableTracks.map(t => t.id));
+
+  // Filter to only valid IDs and log issues
+  const validSelectedIds = selectedIds.filter(id => {
+    if (typeof id !== 'string') {
+      console.warn(`⚠️ Invalid ID type: ${typeof id}`);
+      return false;
+    }
+    if (!validIds.has(id)) {
+      console.warn(`⚠️ ID not found in pool: ${id.substring(0, 20)}...`);
+      return false;
+    }
+    return true;
+  });
+
+  console.log(`✓ Valid tracks: ${validSelectedIds.length}/${selectedIds.length}`);
+
+  // Count unique artists for variety check
+  const artistCounts = new Map<string, number>();
+  for (const id of validSelectedIds) {
+    const track = availableTracks.find(t => t.id === id);
+    if (track) {
+      const artist = track.artists[0]?.name || 'Unknown';
+      artistCounts.set(artist, (artistCounts.get(artist) || 0) + 1);
+    }
+  }
+  console.log(`🎨 Artist variety: ${artistCounts.size} unique artists`);
+
+  if (validSelectedIds.length < 10) {
+    throw new Error(`Not enough valid tracks selected: ${validSelectedIds.length}`);
+  }
+
+  return validSelectedIds;
 }
 
 /**
