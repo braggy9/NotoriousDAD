@@ -57,3 +57,6 @@ logs/
 
 # Spotify tokens (sensitive)
 .spotify-token.json
+
+# API keys backup (ask Claude if needed)
+.env.keys
