@@ -155,13 +155,12 @@ export function filterTracksByConstraints(
 ): any[] {
   let filtered = [...tracks];
 
-  // Filter by artists (include - must have these artists)
+  // NOTE: Include artists are handled SEPARATELY via Spotify search in generate-playlist
+  // We do NOT filter the library here - we want variety from the FULL library
+  // Include artists get ADDED to the pool later, not used to EXCLUDE other tracks
   if (constraints.artists && constraints.artists.length > 0) {
-    const artistsLower = constraints.artists.map(a => a.toLowerCase());
-    filtered = filtered.filter(track => {
-      const trackArtists = track.artists.map((a: any) => a.name.toLowerCase()).join(' ');
-      return artistsLower.some(artist => trackArtists.includes(artist));
-    });
+    console.log(`ℹ️ Include artists (${constraints.artists.join(', ')}) will be added via Spotify search`);
+    // DO NOT filter - keep all library tracks for variety!
   }
 
   // Reference artists (prefer these artists but don't require them)
