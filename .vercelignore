@@ -1,0 +1,6 @@
+# Exclude large data files from deployment
+data/apple-music-checkpoint.json
+data/apple-music-matched.json
+data/apple-music-matched-v2.json
+data/apple-music-tracks.json
+logs/

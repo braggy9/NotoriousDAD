@@ -1,0 +1,68 @@
+# DJ Mix Generator - Progress Tracker
+# Update this file regularly. Commit to git for cross-device sync.
+# Last updated: 2026-01-01
+
+## Current Focus
+- [ ] Memory structure setup (in progress)
+- [ ] Review architecture after Dec 31 fixes
+
+## Recently Completed
+- [x] 2025-12-31: Spotify catalog search for Include artists implemented
+  - System now searches ~30 tracks per Include artist from Spotify
+  - Prioritizes user's liked songs, then popular tracks
+  - MIK data used for harmonic analysis when available
+  - See HANDOVER-BRIEF.md for full details
+
+- [x] 2025-12-31: Architecture review completed
+  - Identified library-only limitation (was only using 4,080 MIK tracks)
+  - Fixed Include vs Reference artist handling
+  - Created IMPLEMENTATION-PLAN.md with new data pipeline
+
+- [x] 2025-12-17: Project status analysis
+  - Full codebase review documented in PROJECT_STATUS_ANALYSIS_DEC_2025.md
+  - Environment config gaps identified
+  - MIK integration assessed at 60% complete
+
+- [x] 2025-12-08: Phase 1 Analytics deployed
+  - Analytics tracking system fully implemented
+  - Learning from replacements, contexts, transitions
+
+- [x] 2025-11-30: Critical fixes
+  - Claude AI review model updated to latest
+  - Track variety improved with randomized seed selection
+  - Taste profile enhanced (200 saved tracks vs 50)
+
+## In Progress / Blocked
+- [ ] Apple Music matching (was 32% complete as of Dec 31)
+  - 15,600/48,474 tracks matched to Spotify
+  - Need to check if matching completed
+  - Consider: abandon Apple Music integration?
+
+- [ ] MIK Integration Phase 2 (~40% complete)
+  - Infrastructure exists but not promoted in UI
+  - Not used during track sequencing
+  - Estimated: 3-4 hours to complete
+
+## Pending / Future
+- [ ] Complete data merge (MIK + Apple Music + Spotify)
+- [ ] Proactive quality control (Phase 4)
+- [ ] Track-level feedback (Phase 5)
+- [ ] External integrations (Last.fm, Beatport, SoundCloud)
+
+## Architecture Decisions Log
+- 2025-12-31: Spotify-first architecture approved
+  - Use Spotify API as primary source
+  - MIK data as enhancement, not dependency
+  - Search catalog for Include artists
+
+## Key URLs
+- Production: https://dj-mix-generator.vercel.app
+- Vercel Dashboard: (check .vercel/project.json for project ID)
+
+## Session Notes
+Add notes here during Claude Code sessions for context preservation:
+
+### 2026-01-01 Session
+- Setting up enhanced memory structure
+- Created .claude/rules/ with domain-specific rules
+- Created this progress file for cross-device sync
