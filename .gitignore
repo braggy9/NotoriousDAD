@@ -45,13 +45,15 @@ next-env.d.ts
 CLAUDE.local.md
 .claude/CLAUDE.local.md
 
-# Large data files (too big for GitHub, kept locally)
+# Large data files (too big for GitHub >100MB limit)
 *.xml
 data/apple-music-checkpoint.json
-data/apple-music-matched.json
-data/apple-music-tracks.json
 logs/
+
+# CSV files (MIK exports - can be regenerated)
 *.csv
+
+# NOTE: data/matched-tracks.json (38MB) IS included - critical for mix quality!
 
 # Spotify tokens (sensitive)
 .spotify-token.json
