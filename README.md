@@ -1,16 +1,17 @@
-# 🎧 DJ Mix Generator
+# 🎧 Notorious DAD - DJ Mix Generator
 
-An AI-powered playlist generator that creates seamless, beatmatched DJ mixes using Spotify's music library and Claude AI's advanced reasoning capabilities.
+A deterministic DJ playlist generator that creates seamless, beatmatched mixes using your personal music library (MIK + Apple Music) with professional harmonic mixing. Designed for djay Pro automix.
 
 ## ✨ Features
 
-- **AI-Curated Playlists** - Claude AI analyzes your music taste and generates cohesive, flow-optimized playlists
-- **Beatmatching & Harmonic Mixing** - Automatic BPM matching and key-compatible transitions
-- **Learning System** - Improves recommendations based on your feedback over time
-- **Reference Playlist Analysis** - Upload a playlist you love and get similar vibe recommendations
-- **Track Replacement** - Don't like a track? Get intelligent replacements that maintain mix flow
-- **Mixed In Key Integration** - Import professional DJ analysis for enhanced harmonic mixing
-- **Quality Scoring** - AI-powered quality assessment of each generated mix
+- **Deterministic Selection** - Reliable track selection algorithm (no AI guessing)
+- **Personal Library First** - Uses YOUR music: 30,000+ tracks from MIK + Apple Music
+- **Playcount Weighting** - Prioritizes tracks you actually listen to
+- **Harmonic Mixing** - Camelot-based key compatibility for smooth transitions
+- **Spotify Catalog Search** - Finds tracks from Include artists beyond your library
+- **Mixed In Key Integration** - Professional key/BPM analysis for DJ-quality mixing
+- **AI Playlist Naming** - Creative, context-aware playlist names via Claude
+- **DALL-E Cover Art** - AI-generated playlist artwork
 
 ## 🚀 Quick Start
 
@@ -161,16 +162,35 @@ dj-mix-generator/
 └── .env.example          # Template for environment setup
 ```
 
-## 📊 How the Learning System Works
+## 🏗️ Architecture (v2.0 - Deterministic)
 
-The app gets smarter over time by analyzing:
+### Data Sources
 
-- **Feedback patterns** - Which types of playlists you rate highly
-- **Track replacements** - Which tracks you swap out and why
-- **Context preferences** - Your taste in different situations (workout, chill, party)
-- **Transition quality** - Which BPM/key transitions work best for you
+| Source | Count | Purpose |
+|--------|-------|---------|
+| **MIK Library** | 4,080 | Professional key/BPM analysis from Mixed In Key |
+| **Apple Music** | ~30,000+ | Your listening history with playcounts |
+| **Spotify Search** | Variable | Tracks from Include artists |
 
-**Note:** You need to rate 5+ playlists before seeing meaningful learning insights.
+### Selection Algorithm
+
+Tracks are scored deterministically (no AI):
+- Apple Music playcount: 0-40 points (what you ACTUALLY play)
+- MIK data presence: 20 points (professional analysis available)
+- Constraint match: 0-20 points (fits BPM/energy requirements)
+- Artist match: 10-20 points (Include/Reference artists)
+- Random factor: 0-10 points (variety)
+
+### Variety Enforcement
+- Maximum 3 tracks per artist
+- Minimum 10 different artists per playlist
+- Include artists get 3 tracks each, rest filled with variety
+
+### AI Usage
+Claude AI is used ONLY for:
+- NLP parsing (understanding prompts)
+- Playlist naming (creative titles)
+- NOT for track selection (deterministic algorithm)
 
 ## 🚀 Deployment
 

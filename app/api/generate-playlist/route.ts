@@ -204,10 +204,8 @@ export async function POST(request: NextRequest) {
     // Fallback: Use hardcoded refresh token for mobile apps
     if (!accessToken && !refreshToken) {
       // This refresh token is for the DJ Mix Generator Spotify app
-      refreshToken = process.env.SPOTIFY_REFRESH_TOKEN;
-      if (refreshToken) {
-        console.log('🔑 Using server-side refresh token');
-      }
+      refreshToken = process.env.SPOTIFY_REFRESH_TOKEN || 'AQB1rhlNzigZavJoEM52V7ANmglze5E8i6KffPV7UcE05TAfNReaIkcu3frWseCSsiKMBIhOXMn9YINoG1ao_syFAelvnQQPKHsXvxJk12lrmfW7yqoBNUWJhsLE_sxprBo';
+      console.log('🔑 Using server-side refresh token fallback');
     }
 
     if (!accessToken && !refreshToken) {

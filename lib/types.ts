@@ -45,6 +45,9 @@ export interface SpotifyTrackWithFeatures {
   camelotKey?: string;
   matchedMIK?: boolean; // True if matched to MIK data
   mikData?: MIKTrack; // Original MIK data if matched
+
+  // Track source for multi-source pool
+  source?: 'mik-library' | 'liked-songs' | 'top-tracks' | 'spotify-search' | 'recommendations' | 'related-artists';
 }
 
 export interface PlaylistTrack extends SpotifyTrackWithFeatures {

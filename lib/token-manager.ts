@@ -66,8 +66,8 @@ async function refreshToken(): Promise<void> {
   }
 
   const envContent = readFileSync(ENV_PATH, 'utf-8');
-  const clientId = envContent.match(/SPOTIFY_CLIENT_ID=(.+)/)?.[1]?.trim();
-  const clientSecret = envContent.match(/SPOTIFY_CLIENT_SECRET=(.+)/)?.[1]?.trim();
+  const clientId = envContent.match(/SPOTIFY_CLIENT_ID=(.+)/)?.[1]?.trim().replace(/^["']|["']$/g, '');
+  const clientSecret = envContent.match(/SPOTIFY_CLIENT_SECRET=(.+)/)?.[1]?.trim().replace(/^["']|["']$/g, '');
 
   if (!clientId || !clientSecret) {
     throw new Error('❌ Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET');

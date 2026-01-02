@@ -1,68 +1,61 @@
 # DJ Mix Generator - Progress Tracker
 # Update this file regularly. Commit to git for cross-device sync.
-# Last updated: 2026-01-01
+# Last updated: 2026-01-01 (v2.0 Architecture)
 
 ## Current Focus
-- [ ] Memory structure setup (in progress)
-- [ ] Review architecture after Dec 31 fixes
+- [x] v2.0 Deterministic architecture DEPLOYED
+- [ ] Apple Music matching in progress (76%+ complete)
+- [ ] Consider Swift native app for iOS/macOS
 
 ## Recently Completed
-- [x] 2025-12-31: Spotify catalog search for Include artists implemented
-  - System now searches ~30 tracks per Include artist from Spotify
-  - Prioritizes user's liked songs, then popular tracks
-  - MIK data used for harmonic analysis when available
-  - See HANDOVER-BRIEF.md for full details
 
-- [x] 2025-12-31: Architecture review completed
-  - Identified library-only limitation (was only using 4,080 MIK tracks)
-  - Fixed Include vs Reference artist handling
-  - Created IMPLEMENTATION-PLAN.md with new data pipeline
+### 2026-01-01: v2.0 MAJOR ARCHITECTURE OVERHAUL
+- [x] Switched from Claude AI selection to deterministic algorithm
+- [x] Integrated full Apple Music library (30,000+ tracks)
+- [x] Added Apple Music playcount weighting (0-40 points)
+- [x] Implemented selection score system
+- [x] Added variety enforcement (max 3 tracks per artist)
+- [x] Fixed artist filtering bug in playlist-nlp.ts
+- [x] Updated all documentation (CLAUDE.md, README.md, HANDOVER-BRIEF.md)
 
-- [x] 2025-12-17: Project status analysis
-  - Full codebase review documented in PROJECT_STATUS_ANALYSIS_DEC_2025.md
-  - Environment config gaps identified
-  - MIK integration assessed at 60% complete
+### 2025-12-31: Spotify catalog search implemented
+- [x] System now searches ~30 tracks per Include artist from Spotify
+- [x] Prioritizes user's liked songs, then popular tracks
+- [x] MIK data used for harmonic analysis when available
 
-- [x] 2025-12-08: Phase 1 Analytics deployed
-  - Analytics tracking system fully implemented
-  - Learning from replacements, contexts, transitions
+### 2025-12-31: Architecture review completed
+- [x] Identified library-only limitation (was only using 4,080 MIK tracks)
+- [x] Fixed Include vs Reference artist handling
 
-- [x] 2025-11-30: Critical fixes
-  - Claude AI review model updated to latest
-  - Track variety improved with randomized seed selection
-  - Taste profile enhanced (200 saved tracks vs 50)
+## In Progress
+- [ ] Apple Music matching: 29,843/48,474 (76.7%)
+  - Matcher running in background
+  - Saves progress every 100 tracks
+  - ~11k tracks remaining
 
-## In Progress / Blocked
-- [ ] Apple Music matching (was 32% complete as of Dec 31)
-  - 15,600/48,474 tracks matched to Spotify
-  - Need to check if matching completed
-  - Consider: abandon Apple Music integration?
-
-- [ ] MIK Integration Phase 2 (~40% complete)
-  - Infrastructure exists but not promoted in UI
-  - Not used during track sequencing
-  - Estimated: 3-4 hours to complete
-
-## Pending / Future
-- [ ] Complete data merge (MIK + Apple Music + Spotify)
-- [ ] Proactive quality control (Phase 4)
-- [ ] Track-level feedback (Phase 5)
-- [ ] External integrations (Last.fm, Beatport, SoundCloud)
+## Completed
+- [x] Data merge (MIK + Apple Music + Spotify search) - DONE
+- [x] Deterministic selection algorithm - DONE
+- [x] Variety enforcement - DONE
+- [x] Documentation update - DONE
 
 ## Architecture Decisions Log
-- 2025-12-31: Spotify-first architecture approved
-  - Use Spotify API as primary source
-  - MIK data as enhancement, not dependency
-  - Search catalog for Include artists
+- 2026-01-01: v2.0 Deterministic Architecture
+  - Removed Claude AI from track selection (kept for NLP only)
+  - Selection score: playcount + MIK data + constraints + artist match
+  - Variety: max 3 tracks per artist, min 10 unique artists
+  - Data: MIK (4,080) + Apple Music (30,000+) + Spotify search
 
 ## Key URLs
 - Production: https://dj-mix-generator.vercel.app
 - Vercel Dashboard: (check .vercel/project.json for project ID)
 
 ## Session Notes
-Add notes here during Claude Code sessions for context preservation:
 
-### 2026-01-01 Session
-- Setting up enhanced memory structure
-- Created .claude/rules/ with domain-specific rules
-- Created this progress file for cross-device sync
+### 2026-01-01 Session (v2.0 Deploy)
+- Complete architecture overhaul to deterministic selection
+- Fixed artist variety issue (was only showing Include artists)
+- Integrated full Apple Music checkpoint (27,632+ and growing)
+- Updated all documentation
+- Matcher running at 2.1-2.2 tracks/sec
+- User asked about Swift native app - consider after web version stable
