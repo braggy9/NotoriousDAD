@@ -127,7 +127,9 @@ function calculateSelectionScore(
   score += Math.max(0, constraintScore);
 
   // 4. Artist match (20 points for Include, 10 for Reference)
-  const trackArtists = track.artists.map(a => a.name.toLowerCase());
+  const trackArtists = track.artists
+    .filter(a => a && a.name)
+    .map(a => a.name.toLowerCase());
 
   for (const artist of trackArtists) {
     if (includeArtists.has(artist)) {
