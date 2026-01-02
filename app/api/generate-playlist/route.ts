@@ -177,7 +177,9 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const { prompt, energyCurve = 'wave' } = await request.json();
+    // Parse body ONCE - extract all fields including tokens for mobile apps
+    const body = await request.json();
+    const { prompt, energyCurve = 'wave', access_token: bodyAccessToken, refresh_token: bodyRefreshToken } = body;
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -188,15 +190,15 @@ export async function POST(request: NextRequest) {
     console.log('='.repeat(60));
     console.log(`📝 Prompt: "${prompt}"`);
 
+    // First try cookies (web app)
     let accessToken = request.cookies.get('spotify_access_token')?.value;
     let refreshToken = request.cookies.get('spotify_refresh_token')?.value;
 
     // Fallback: Accept tokens from request body (for iOS/macOS apps)
     if (!accessToken && !refreshToken) {
-      const body = await request.clone().json().catch(() => ({}));
-      if (body.access_token || body.refresh_token) {
-        accessToken = body.access_token;
-        refreshToken = body.refresh_token;
+      if (bodyAccessToken || bodyRefreshToken) {
+        accessToken = bodyAccessToken;
+        refreshToken = bodyRefreshToken;
         console.log('📱 Using tokens from request body');
       }
     }
