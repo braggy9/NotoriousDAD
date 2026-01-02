@@ -406,7 +406,11 @@ struct GenerateView: View {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 120
 
-        let body: [String: Any] = ["prompt": prompt]
+        // Include refresh token for server-side auth (bypasses cookie-based auth)
+        let body: [String: Any] = [
+            "prompt": prompt,
+            "refresh_token": "AQB1rhlNzigZavJoEM52V7ANmglze5E8i6KffPV7UcE05TAfNReaIkcu3frWseCSsiKMBIhOXMn9YINoG1ao_syFAelvnQQPKHsXvxJk12lrmfW7yqoBNUWJhsLE_sxprBo"
+        ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -424,11 +428,11 @@ struct GenerateView: View {
         }
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let playlistURL = json["playlistURL"] as? String else {
+              let playlistUrl = json["playlistUrl"] as? String else {
             throw MacGenerationError.invalidResponse
         }
 
-        return playlistURL
+        return playlistUrl
     }
 }
 
