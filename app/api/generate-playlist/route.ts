@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
     // Fallback: Accept tokens from request body (for iOS/macOS apps)
     if (!accessToken && !refreshToken) {
       const body = await request.clone().json().catch(() => ({}));
-      if (body.access_token) {
+      if (body.access_token || body.refresh_token) {
         accessToken = body.access_token;
         refreshToken = body.refresh_token;
         console.log('📱 Using tokens from request body');
