@@ -4,3 +4,26 @@ data/apple-music-matched.json
 data/apple-music-matched-v2.json
 data/apple-music-tracks.json
 logs/
+
+# Exclude node_modules (Vercel installs fresh)
+node_modules/
+
+# Exclude iOS/macOS native apps (separate deployment via Xcode Cloud)
+NotoriousDAD-iOS/
+NotoriousDAD-macOS/
+NotoriousDADKit/
+
+# Exclude build artifacts
+.next/
+out/
+build/
+.build/
+
+# Exclude large XML files
+*.xml
+
+# Exclude CSV files
+*.csv
+
+# Exclude git
+.git/
