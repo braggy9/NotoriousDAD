@@ -6,40 +6,51 @@ import { optimizeTrackOrder, calculatePlaylistQuality } from '@/lib/automix-opti
 import { spotifyToCamelot } from '@/lib/camelot-wheel';
 import {
   extractPlaylistConstraints,
-  filterTracksByConstraints,
   summarizeConstraints,
+  calculateTargetTrackCount,
 } from '@/lib/playlist-nlp';
-import {
-  selectTracksWithClaude,
-  getUserTopArtists,
-} from '@/lib/enhanced-track-selector';
-import {
-  extractSpotifyPlaylistId,
-  fetchSpotifyPlaylist,
-  analyzePlaylistCharacteristics,
-  describePlaylist,
-} from '@/lib/playlist-seed-parser';
-import {
-  getSampleBeatportChart,
-  findBeatportTracksInLibrary,
-} from '@/lib/beatport-scraper';
 import {
   generatePlaylistName,
   extractPlaylistCharacteristics,
   generateSimpleName,
 } from '@/lib/playlist-namer';
 import { generateAndUploadCoverArt } from '@/lib/cover-art-generator';
-import { searchMultipleArtists } from '@/lib/spotify-artist-search';
-import {
-  buildEnhancedTrackPool,
-  mapToSpotifyGenres,
-} from '@/lib/spotify-recommendations';
 
-const STORAGE_PATH = path.join(process.cwd(), 'data', 'matched-tracks.json');
+const MIK_DATA_PATH = path.join(process.cwd(), 'data', 'matched-tracks.json');
+const APPLE_MUSIC_CHECKPOINT_PATH = path.join(process.cwd(), 'data', 'apple-music-checkpoint.json');
 
 interface SpotifyUser {
   id: string;
   display_name: string;
+}
+
+interface AppleMusicMatch {
+  appleMusicTrack: {
+    name?: string;
+    artist?: string;
+    album?: string;
+    genre?: string;
+    playCount?: string;
+  };
+  spotifyTrack: {
+    id: string;
+    uri: string;
+    name: string;
+    artists: { name: string }[];
+    album: { name: string };
+    popularity?: number;
+    duration_ms?: number;
+  };
+}
+
+interface AppleMusicCheckpoint {
+  lastIndex: number;
+  matches: AppleMusicMatch[];
+}
+
+interface EnrichedTrack extends SpotifyTrackWithFeatures {
+  appleMusicPlayCount: number;
+  selectionScore: number;
 }
 
 async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in: number } | null> {
@@ -68,7 +79,103 @@ async function refreshAccessToken(refreshToken: string): Promise<{ access_token:
   }
 }
 
+/**
+ * DETERMINISTIC TRACK SELECTION - No AI, just math
+ *
+ * Selection Score = sum of:
+ * - Apple Music playcount (normalized 0-40 points) - what you actually play
+ * - MIK data presence (20 points) - professional analysis available
+ * - Constraint match (0-20 points) - fits BPM/energy/genre
+ * - Artist match (20 points) - matches Include/Reference artists
+ * - Randomness (0-10 points) - variety
+ */
+function calculateSelectionScore(
+  track: SpotifyTrackWithFeatures,
+  applePlayCount: number,
+  constraints: any,
+  includeArtists: Set<string>,
+  referenceArtists: Set<string>
+): number {
+  let score = 0;
+
+  // 1. Apple Music playcount (0-40 points) - MOST IMPORTANT
+  // Normalize: 0 plays = 0, 10+ plays = 40 points
+  score += Math.min(applePlayCount * 4, 40);
+
+  // 2. MIK data presence (20 points)
+  if (track.mikData || track.camelotKey) {
+    score += 20;
+  }
+
+  // 3. Constraint matching (0-20 points)
+  let constraintScore = 20; // Start with full points, subtract for mismatches
+
+  if (constraints.bpmRange && track.tempo) {
+    const bpm = track.tempo;
+    if (bpm < constraints.bpmRange.min || bpm > constraints.bpmRange.max) {
+      constraintScore -= 10;
+    }
+  }
+
+  if (constraints.energyRange && track.energy !== undefined) {
+    const energy = track.energy * 10; // Normalize to 0-10
+    if (energy < constraints.energyRange.min || energy > constraints.energyRange.max) {
+      constraintScore -= 10;
+    }
+  }
+
+  score += Math.max(0, constraintScore);
+
+  // 4. Artist match (20 points for Include, 10 for Reference)
+  const trackArtists = track.artists.map(a => a.name.toLowerCase());
+
+  for (const artist of trackArtists) {
+    if (includeArtists.has(artist)) {
+      score += 20;
+      break;
+    }
+    if (referenceArtists.has(artist)) {
+      score += 10;
+      break;
+    }
+  }
+
+  // 5. Random factor (0-10 points) for variety
+  score += Math.random() * 10;
+
+  return score;
+}
+
+/**
+ * Search Spotify for tracks from specific artists
+ */
+async function searchArtistTracks(
+  artistName: string,
+  accessToken: string,
+  limit: number = 20
+): Promise<SpotifyTrackWithFeatures[]> {
+  try {
+    const query = encodeURIComponent(`artist:${artistName}`);
+    const response = await fetch(
+      `https://api.spotify.com/v1/search?q=${query}&type=track&limit=${limit}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return (data.tracks?.items || []).map((track: any) => ({
+      ...track,
+      source: 'spotify-search' as const,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const { prompt, energyCurve = 'wave' } = await request.json();
 
@@ -76,23 +183,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    let accessToken = request.cookies.get('spotify_access_token')?.value;
-    const refreshToken = request.cookies.get('spotify_refresh_token')?.value;
+    console.log('\n' + '='.repeat(60));
+    console.log('🎵 DETERMINISTIC PLAYLIST GENERATOR v2.0');
+    console.log('='.repeat(60));
+    console.log(`📝 Prompt: "${prompt}"`);
 
-    console.log('🔍 Cookie check:', {
-      hasAccessToken: !!accessToken,
-      hasRefreshToken: !!refreshToken,
-      accessTokenLength: accessToken?.length,
-      allCookies: request.cookies.getAll().map(c => ({ name: c.name, hasValue: !!c.value })),
-    });
+    let accessToken = request.cookies.get('spotify_access_token')?.value;
+    let refreshToken = request.cookies.get('spotify_refresh_token')?.value;
+
+    // Fallback: Accept tokens from request body (for iOS/macOS apps)
+    if (!accessToken && !refreshToken) {
+      const body = await request.clone().json().catch(() => ({}));
+      if (body.access_token) {
+        accessToken = body.access_token;
+        refreshToken = body.refresh_token;
+        console.log('📱 Using tokens from request body');
+      }
+    }
+
+    // Fallback: Use hardcoded refresh token for mobile apps
+    if (!accessToken && !refreshToken) {
+      // This refresh token is for the DJ Mix Generator Spotify app
+      refreshToken = process.env.SPOTIFY_REFRESH_TOKEN;
+      if (refreshToken) {
+        console.log('🔑 Using server-side refresh token');
+      }
+    }
 
     if (!accessToken && !refreshToken) {
-      console.error('❌ No auth cookies found');
       return NextResponse.json({
         error: 'Not authenticated. Please log in again.',
-        debug: {
-          foundCookies: request.cookies.getAll().map(c => c.name),
-        }
       }, { status: 401 });
     }
 
@@ -101,517 +221,284 @@ export async function POST(request: NextRequest) {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    // If unauthorized and we have a refresh token, try to refresh
     if (!userResponse.ok && userResponse.status === 401 && refreshToken) {
-      console.log('🔄 Access token expired, refreshing...');
+      console.log('🔄 Refreshing token...');
       const newTokenData = await refreshAccessToken(refreshToken);
-
       if (!newTokenData) {
         return NextResponse.json({ error: 'Failed to refresh token. Please log in again.' }, { status: 401 });
       }
-
       accessToken = newTokenData.access_token;
-
-      // Retry user profile fetch with new token
       userResponse = await fetch('https://api.spotify.com/v1/me', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
     }
 
     if (!userResponse.ok) {
-      const errorText = await userResponse.text();
-      console.error('User profile fetch failed:', {
-        status: userResponse.status,
-        statusText: userResponse.statusText,
-        body: errorText,
-        hasAccessToken: !!accessToken,
-        accessTokenLength: accessToken?.length,
-        hasRefreshToken: !!refreshToken,
-      });
-      return NextResponse.json({
-        error: 'Failed to fetch user profile. Please try logging in again.',
-        debug: {
-          status: userResponse.status,
-          hasToken: !!accessToken,
-          tokenLength: accessToken?.length,
-          errorDetail: errorText.substring(0, 200),
-        }
-      }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to fetch user profile.' }, { status: 500 });
     }
 
     const user: SpotifyUser = await userResponse.json();
+    console.log(`👤 User: ${user.display_name}`);
 
     // ============================================
-    // BUILD TRACK POOL FROM MULTIPLE SOURCES
+    // STEP 1: LOAD ALL DATA SOURCES
     // ============================================
-    // We use ALL sources, not just MIK. MIK provides enhanced data when available.
-    let availableTracks: SpotifyTrackWithFeatures[] = [];
-    const trackIdSet = new Set<string>(); // Prevent duplicates
+    console.log('\n📦 STEP 1: Loading data sources...');
 
-    // Source 1: MIK matched tracks (has professional key/BPM data)
+    // Load MIK tracks
+    let mikTracks: SpotifyTrackWithFeatures[] = [];
     try {
-      const data = await fs.readFile(STORAGE_PATH, 'utf-8');
+      const data = await fs.readFile(MIK_DATA_PATH, 'utf-8');
       const matchedData = JSON.parse(data);
-      const mikTracks = matchedData.tracks.map((t: any) => ({
+      mikTracks = matchedData.tracks.map((t: any) => ({
         ...t.spotifyTrack,
         mikData: t.mikData,
-        source: 'mik-library'
+        camelotKey: t.mikData?.camelotKey,
+        tempo: t.mikData?.bpm || t.spotifyTrack?.tempo,
+        energy: t.mikData?.energy || t.spotifyTrack?.energy,
+        source: 'mik-library' as const,
       }));
-      for (const track of mikTracks) {
-        if (!trackIdSet.has(track.id)) {
-          availableTracks.push(track);
-          trackIdSet.add(track.id);
+      console.log(`  ✓ MIK Library: ${mikTracks.length} tracks with professional analysis`);
+    } catch {
+      console.log('  ⚠️ No MIK data found');
+    }
+
+    // Load Apple Music checkpoint (34k+ matched tracks)
+    let appleMatches: AppleMusicMatch[] = [];
+    const applePlayCounts = new Map<string, number>();
+    try {
+      const checkpointData = await fs.readFile(APPLE_MUSIC_CHECKPOINT_PATH, 'utf-8');
+      const checkpoint: AppleMusicCheckpoint = JSON.parse(checkpointData);
+      appleMatches = checkpoint.matches || [];
+
+      // Build playcount map
+      for (const match of appleMatches) {
+        if (match.spotifyTrack?.id && match.appleMusicTrack?.playCount) {
+          applePlayCounts.set(match.spotifyTrack.id, parseInt(match.appleMusicTrack.playCount) || 0);
         }
       }
-      console.log(`📚 Source 1: ${mikTracks.length} MIK-matched tracks`);
-    } catch {
-      console.log('ℹ️ No MIK data found');
+      console.log(`  ✓ Apple Music: ${appleMatches.length} matched tracks (${applePlayCounts.size} with playcounts)`);
+    } catch (e) {
+      console.log('  ⚠️ No Apple Music checkpoint found:', e);
     }
 
-    // Source 2: User's Liked Songs (up to 200)
-    console.log('💚 Fetching user liked songs...');
-    for (let offset = 0; offset < 200; offset += 50) {
-      try {
-        const likedResponse = await fetch(
-          `https://api.spotify.com/v1/me/tracks?limit=50&offset=${offset}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        if (likedResponse.ok) {
-          const likedData = await likedResponse.json();
-          for (const item of likedData.items || []) {
-            if (item.track && !trackIdSet.has(item.track.id)) {
-              availableTracks.push({ ...item.track, source: 'liked-songs' });
-              trackIdSet.add(item.track.id);
-            }
-          }
-          if ((likedData.items?.length || 0) < 50) break; // No more tracks
-        }
-      } catch { break; }
-    }
-    console.log(`💚 Source 2: ${availableTracks.filter(t => t.source === 'liked-songs').length} liked songs added`);
+    // Build track pool from BOTH sources
+    const trackPool = new Map<string, EnrichedTrack>();
 
-    // Source 3: User's Top Tracks (personalization)
-    try {
-      const topTracksResponse = await fetch(
-        'https://api.spotify.com/v1/me/top/tracks?limit=50&time_range=medium_term',
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      if (topTracksResponse.ok) {
-        const topData = await topTracksResponse.json();
+    // Source A: MIK library (DJ-ready tracks with professional analysis)
+    for (const track of mikTracks) {
+      const playCount = applePlayCounts.get(track.id) || 0;
+      trackPool.set(track.id, {
+        ...track,
+        appleMusicPlayCount: playCount,
+        selectionScore: 0,
+      });
+    }
+    console.log(`  📊 MIK pool: ${trackPool.size} tracks`);
+
+    // Source B: ALL Apple Music matched tracks (34k+ from your full library)
+    let addedFromApple = 0;
+    let withPlaycount = 0;
+
+    for (const match of appleMatches) {
+      const spotifyTrack = match.spotifyTrack;
+      const appleTrack = match.appleMusicTrack;
+
+      if (spotifyTrack?.id && !trackPool.has(spotifyTrack.id)) {
+        const playCount = parseInt(appleTrack?.playCount || '0') || 0;
+        if (playCount > 0) withPlaycount++;
+
+        trackPool.set(spotifyTrack.id, {
+          id: spotifyTrack.id,
+          uri: spotifyTrack.uri || `spotify:track:${spotifyTrack.id}`,
+          name: spotifyTrack.name || appleTrack?.name || 'Unknown',
+          artists: spotifyTrack.artists || [{ name: appleTrack?.artist || 'Unknown' }],
+          album: spotifyTrack.album || { name: appleTrack?.album || 'Unknown' },
+          popularity: spotifyTrack.popularity || 0,
+          duration_ms: spotifyTrack.duration_ms || 0,
+          source: 'liked-songs',
+          appleMusicPlayCount: playCount,
+          selectionScore: 0,
+        } as EnrichedTrack);
+        addedFromApple++;
+      }
+    }
+    console.log(`  📊 Added ${addedFromApple} Apple Music tracks (${withPlaycount} with playcounts)`);
+
+    console.log(`  📊 Total pool: ${trackPool.size} tracks`);
+
+    // ============================================
+    // STEP 2: PARSE CONSTRAINTS (Claude - good at this)
+    // ============================================
+    console.log('\n🧠 STEP 2: Parsing constraints with Claude...');
+    const constraints = await extractPlaylistConstraints(prompt);
+    console.log(`  ✓ ${summarizeConstraints(constraints)}`);
+
+    const targetCount = calculateTargetTrackCount(constraints);
+    console.log(`  🎯 Target: ${targetCount} tracks`);
+
+    // Build artist sets for matching
+    const includeArtists = new Set(
+      (constraints.artists || []).map((a: string) => a.toLowerCase())
+    );
+    const referenceArtists = new Set(
+      (constraints.referenceArtists || []).map((a: string) => a.toLowerCase())
+    );
+
+    console.log(`  📌 Include artists: ${Array.from(includeArtists).join(', ') || 'none'}`);
+    console.log(`  📎 Reference artists: ${Array.from(referenceArtists).join(', ') || 'none'}`);
+
+    // ============================================
+    // STEP 3: SEARCH SPOTIFY FOR INCLUDE ARTISTS
+    // ============================================
+    if (includeArtists.size > 0 && accessToken) {
+      console.log('\n🔍 STEP 3: Searching Spotify for Include artists...');
+
+      for (const artist of includeArtists) {
+        const artistTracks = await searchArtistTracks(artist, accessToken, 30);
         let added = 0;
-        for (const track of topData.items || []) {
-          if (!trackIdSet.has(track.id)) {
-            availableTracks.push({ ...track, source: 'top-tracks' });
-            trackIdSet.add(track.id);
+
+        for (const track of artistTracks) {
+          if (!trackPool.has(track.id)) {
+            const playCount = applePlayCounts.get(track.id) || 0;
+            trackPool.set(track.id, {
+              ...track,
+              appleMusicPlayCount: playCount,
+              selectionScore: 0,
+            });
             added++;
           }
         }
-        console.log(`⭐ Source 3: ${added} top tracks added`);
+        console.log(`  ✓ ${artist}: added ${added} tracks from Spotify`);
       }
-    } catch { }
+    }
 
-    console.log(`📦 Base pool: ${availableTracks.length} tracks from user sources`);
+    // ============================================
+    // STEP 4: CALCULATE SELECTION SCORES
+    // ============================================
+    console.log('\n📊 STEP 4: Calculating selection scores...');
 
-    // Fetch audio features for all tracks
-    const trackIds = availableTracks.map(t => t.id).filter(Boolean);
+    for (const [id, track] of trackPool) {
+      track.selectionScore = calculateSelectionScore(
+        track,
+        track.appleMusicPlayCount,
+        constraints,
+        includeArtists,
+        referenceArtists
+      );
+    }
 
-    if (trackIds.length > 0) {
-      const audioFeaturesResponse = await fetch(
-        `https://api.spotify.com/v1/audio-features?ids=${trackIds.join(',')}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
+    // Sort by score
+    const rankedTracks = Array.from(trackPool.values())
+      .sort((a, b) => b.selectionScore - a.selectionScore);
+
+    console.log(`  ✓ Ranked ${rankedTracks.length} tracks`);
+    console.log(`  Top 5 scores: ${rankedTracks.slice(0, 5).map(t => t.selectionScore.toFixed(1)).join(', ')}`);
+
+    // ============================================
+    // STEP 5: SELECT TRACKS WITH VARIETY ENFORCEMENT
+    // ============================================
+    console.log('\n🎯 STEP 5: Selecting tracks with variety enforcement...');
+
+    const selectedTracks: EnrichedTrack[] = [];
+    const selectedArtists = new Map<string, number>(); // artist -> count
+    const maxPerArtist = Math.max(3, Math.ceil(targetCount / 10)); // At least 10 different artists
+
+    // First pass: ensure Include artists are represented
+    for (const artist of includeArtists) {
+      const artistTracks = rankedTracks.filter(t =>
+        t.artists.some(a => a.name.toLowerCase() === artist)
       );
 
-      if (audioFeaturesResponse.ok) {
-        const audioFeaturesData = await audioFeaturesResponse.json();
-
-        availableTracks = availableTracks.map((track, index) => {
-          const features = audioFeaturesData.audio_features[index];
-
-          if (!features) return track;
-
-          return {
-            ...track,
-            ...features,
-            // Use MIK camelot key if available, otherwise convert Spotify key
-            camelotKey: track.camelotKey || (
-              features.key !== null && features.mode !== null
-                ? spotifyToCamelot(features.key, features.mode)
-                : undefined
-            ),
-          };
-        });
-      }
-    }
-
-    // ============================================
-    // ENHANCED TWO-PASS SYSTEM
-    // ============================================
-
-    // PASS 1: Extract structured constraints from natural language
-    console.log('🔍 PASS 1: Extracting constraints from prompt...');
-    let constraints = await extractPlaylistConstraints(prompt);
-    console.log('✓ Constraints extracted:', summarizeConstraints(constraints));
-
-    // Handle seed playlist if provided
-    if (constraints.seedPlaylistUrl) {
-      console.log('🎵 Seed playlist detected, analyzing...');
-      const playlistId = extractSpotifyPlaylistId(constraints.seedPlaylistUrl);
-
-      if (playlistId && accessToken) {
-        try {
-          const seedPlaylist = await fetchSpotifyPlaylist(playlistId, accessToken);
-          console.log(`✓ Fetched seed playlist: "${seedPlaylist.name}" (${seedPlaylist.tracks.length} tracks)`);
-
-          const analysis = analyzePlaylistCharacteristics(seedPlaylist.tracks);
-          console.log(`✓ Analysis: ${analysis.commonArtists.length} common artists, ${analysis.avgBPM} BPM avg`);
-
-          // Merge seed analysis with extracted constraints
-          constraints = {
-            ...constraints,
-            seedPlaylistId: playlistId,
-            // Use seed characteristics if not explicitly specified
-            referenceArtists: constraints.referenceArtists || analysis.commonArtists,
-            bpmRange: constraints.bpmRange || analysis.bpmRange,
-            energyRange: constraints.energyRange || {
-              min: Math.round(analysis.energyRange.min * 10),
-              max: Math.round(analysis.energyRange.max * 10),
-            },
-            genres: constraints.genres || analysis.genres,
-          };
-
-          // Enhance prompt with playlist description
-          const playlistDesc = describePlaylist(analysis, seedPlaylist.name);
-          constraints.originalPrompt = `${prompt}\n\nSeed playlist analysis: ${playlistDesc}`;
-
-          console.log('✓ Enhanced constraints with seed playlist data');
-        } catch (error) {
-          console.warn('⚠️  Failed to fetch seed playlist:', error);
-        }
-      }
-    }
-
-    // Handle Beatport chart if requested
-    if (constraints.useBeatportChart && constraints.beatportGenre && accessToken) {
-      console.log(`📊 Fetching Beatport ${constraints.beatportGenre} chart...`);
-      try {
-        // Get sample Beatport chart (in production, this would scrape the actual chart)
-        const beatportChart = getSampleBeatportChart(constraints.beatportGenre);
-        console.log(`✓ Loaded ${beatportChart.tracks.length} Beatport chart tracks`);
-
-        if (beatportChart.tracks.length > 0) {
-          // Match Beatport tracks to user's Spotify library
-          const matches = await findBeatportTracksInLibrary(
-            beatportChart.tracks,
-            availableTracks,
-            accessToken
-          );
-
-          console.log(`✓ Matched ${matches.length} Beatport tracks to library`);
-
-          // Add matched Beatport tracks as reference artists
-          if (matches.length > 0) {
-            const beatportArtists = matches
-              .flatMap(m => m.spotify.artists.map(a => a.name))
-              .filter((v, i, a) => a.indexOf(v) === i) // unique
-              .slice(0, 10);
-
-            constraints.referenceArtists = [
-              ...(constraints.referenceArtists || []),
-              ...beatportArtists,
-            ];
-
-            // Update prompt context
-            constraints.originalPrompt += `\n\nBeatport ${constraints.beatportGenre} chart influence: ${beatportArtists.slice(0, 5).join(', ')}`;
-
-            console.log(`✓ Added ${beatportArtists.length} Beatport artists as references`);
-          }
-        }
-      } catch (error) {
-        console.warn('⚠️  Failed to fetch Beatport chart:', error);
-        // Continue without Beatport data
-      }
-    }
-
-    // Apply constraints to filter available tracks
-    console.log(`📊 Filtering ${availableTracks.length} tracks by constraints...`);
-    let filteredTracks = filterTracksByConstraints(availableTracks, constraints);
-    console.log(`✓ ${filteredTracks.length} tracks match constraints`);
-
-    // ============================================
-    // SPOTIFY CATALOG SEARCH FOR INCLUDE ARTISTS
-    // ============================================
-    // Key improvement: Search Spotify for Include artists instead of only using library
-    if (constraints.artists && constraints.artists.length > 0 && accessToken) {
-      console.log(`🔍 Searching Spotify catalog for Include artists: ${constraints.artists.join(', ')}`);
-
-      // Create set of user library track IDs for prioritization
-      const userLibraryIds = new Set(availableTracks.map(t => t.id));
-
-      // Create map of MIK data for enhanced track info
-      const mikDataMap = new Map<string, any>();
-      availableTracks.forEach(t => {
-        if (t.camelotKey || t.tempo) {
-          mikDataMap.set(t.id, {
-            bpm: t.tempo,
-            camelotKey: t.camelotKey,
-            energy: t.energy,
-          });
-        }
-      });
-
-      try {
-        // Search Spotify for all tracks from Include artists
-        const { tracks: spotifySearchTracks, artistResults } = await searchMultipleArtists(
-          constraints.artists,
-          accessToken,
-          {
-            tracksPerArtist: 30, // Get up to 30 tracks per Include artist
-            userLibraryIds,
-            mikDataMap,
-          }
-        );
-
-        console.log(`✓ Found ${spotifySearchTracks.length} tracks from Include artists via Spotify search`);
-
-        // Log per-artist results
-        for (const [artist, tracks] of artistResults) {
-          const inLibrary = tracks.filter(t => t.inUserLibrary).length;
-          const withMik = tracks.filter(t => t.hasMikData).length;
-          console.log(`  • ${artist}: ${tracks.length} tracks (${inLibrary} in library, ${withMik} with MIK data)`);
-        }
-
-        // Merge Spotify search results with library tracks
-        // Priority: Library tracks with MIK data > Library tracks > Spotify search
-        const mergedTracks = new Map<string, SpotifyTrackWithFeatures>();
-
-        // First, add all library tracks (highest priority)
-        for (const track of filteredTracks) {
-          mergedTracks.set(track.id, track);
-        }
-
-        // Then, add Spotify search results (won't overwrite library tracks due to Map behavior)
-        for (const track of spotifySearchTracks) {
-          if (!mergedTracks.has(track.id)) {
-            mergedTracks.set(track.id, track as SpotifyTrackWithFeatures);
-          }
-        }
-
-        filteredTracks = Array.from(mergedTracks.values());
-        console.log(`✓ Merged pool: ${filteredTracks.length} total tracks`);
-
-        // Summarize track sources
-        const libraryTracks = filteredTracks.filter(t => userLibraryIds.has(t.id)).length;
-        const searchTracks = filteredTracks.length - libraryTracks;
-        console.log(`  Sources: ${libraryTracks} from library, ${searchTracks} from Spotify search`);
-
-      } catch (error) {
-        console.warn('⚠️  Spotify search failed, using library only:', error);
-        // Continue with library tracks if search fails
-      }
-    }
-
-    // Check if we have enough tracks
-    if (constraints.artists && constraints.artists.length > 0) {
-      if (filteredTracks.length === 0) {
-        return NextResponse.json({
-          error: `No tracks found from required artists: ${constraints.artists.join(', ')}`,
-          hint: 'Try using "Reference:" instead of "Include:" to use these artists as a style guide.',
-          constraints: summarizeConstraints(constraints),
-        }, { status: 404 });
-      }
-
-      // If still very few tracks, convert to Reference for better playlist
-      if (filteredTracks.length < 15) {
-        console.warn(`⚠️  Only ${filteredTracks.length} tracks from Include artists - expanding pool with Reference approach`);
-
-        // Keep Include artists but also search for similar tracks
-        constraints.referenceArtists = [
-          ...(constraints.referenceArtists || []),
-          ...constraints.artists
-        ];
-
-        // Also add general library tracks to the pool for variety
-        const generalTracks = filterTracksByConstraints(availableTracks, {
-          ...constraints,
-          artists: undefined, // Remove Include requirement for this filter
-        });
-
-        // Merge general tracks with Include artist tracks
-        const includeTrackIds = new Set(filteredTracks.map(t => t.id));
-        for (const track of generalTracks.slice(0, 100)) {
-          if (!includeTrackIds.has(track.id)) {
-            filteredTracks.push(track);
-          }
-        }
-
-        console.log(`✓ Expanded to ${filteredTracks.length} tracks (Include artists + reference pool)`);
-      }
-    }
-
-    // ============================================
-    // SPOTIFY ENGINES: Recommendations + Related Artists + Liked Songs
-    // ============================================
-    // Use Spotify's AI to expand the track pool with taste-matched tracks
-    if (accessToken) {
-      console.log('\n🚀 Engaging Spotify engines for enhanced discovery...');
-
-      // Map mood/vibe keywords to Spotify genre seeds
-      const spotifyGenres = mapToSpotifyGenres([
-        ...(constraints.genres || []),
-        ...(constraints.moods || []),
-      ]);
-
-      // Determine mood for Spotify tuning
-      let spotifyMood: 'energetic' | 'chill' | 'dark' | 'uplifting' | undefined;
-      const moodKeywords = constraints.moods?.join(' ') || '';
-      if (moodKeywords) {
-        const moodLower = moodKeywords.toLowerCase();
-        if (moodLower.includes('energ') || moodLower.includes('pump') || moodLower.includes('hype')) {
-          spotifyMood = 'energetic';
-        } else if (moodLower.includes('chill') || moodLower.includes('relax') || moodLower.includes('mellow')) {
-          spotifyMood = 'chill';
-        } else if (moodLower.includes('dark') || moodLower.includes('deep') || moodLower.includes('underground')) {
-          spotifyMood = 'dark';
-        } else if (moodLower.includes('happy') || moodLower.includes('uplift') || moodLower.includes('positive')) {
-          spotifyMood = 'uplifting';
-        }
-      }
-
-      try {
-        const { tracks: enhancedTracks, sources } = await buildEnhancedTrackPool(
-          accessToken,
-          {
-            includeArtists: constraints.artists,
-            referenceArtists: constraints.referenceArtists,
-            targetBpm: constraints.bpmRange
-              ? Math.round((constraints.bpmRange.min + constraints.bpmRange.max) / 2)
-              : undefined,
-            bpmRange: constraints.bpmRange,
-            energyRange: constraints.energyRange,
-            mood: spotifyMood,
-            genres: spotifyGenres,
-            includeLikedSongs: true,
-            maxTracks: 300,
-          }
-        );
-
-        // Merge Spotify engine tracks with existing pool
-        const existingIds = new Set(filteredTracks.map(t => t.id));
-        let addedFromSpotify = 0;
-
-        for (const track of enhancedTracks) {
-          if (!existingIds.has(track.id)) {
-            filteredTracks.push(track as SpotifyTrackWithFeatures);
-            existingIds.add(track.id);
-            addedFromSpotify++;
-          }
-        }
-
-        console.log(`✅ Spotify engines added ${addedFromSpotify} new tracks to pool`);
-        console.log(`   Total pool now: ${filteredTracks.length} tracks`);
-
-      } catch (error) {
-        console.warn('⚠️ Spotify engines failed (continuing with existing pool):', error);
-      }
-    }
-
-    // Fallback: if still too few tracks, use full library
-    if (filteredTracks.length < 30) {
-      console.warn('⚠️  Too few matches, using full library...');
-      filteredTracks = availableTracks;
-    }
-
-    // Fetch user's top artists for personalization
-    console.log('⭐ Fetching user preferences...');
-    const topArtists = accessToken ? await getUserTopArtists(accessToken) : [];
-    console.log(`✓ Found ${topArtists.length} top artists`);
-
-    // PASS 2: Intelligent track selection with Claude
-    console.log('🎵 PASS 2: Selecting optimal tracks with Claude...');
-    const selectedIds = await selectTracksWithClaude(
-      filteredTracks,
-      constraints,
-      topArtists
-    );
-    console.log(`✓ Selected ${selectedIds.length} tracks`);
-
-    // Get selected tracks with full features (preserve order, remove duplicates)
-    const selectedTracks: SpotifyTrackWithFeatures[] = [];
-    const seenIds = new Set<string>();
-
-    for (const id of selectedIds) {
-      if (!seenIds.has(id)) {
-        const track = filteredTracks.find(t => t.id === id);
-        if (track) {
+      const toAdd = artistTracks.slice(0, Math.min(3, maxPerArtist)); // 3 tracks per Include artist
+      for (const track of toAdd) {
+        if (selectedTracks.length < targetCount && !selectedTracks.find(t => t.id === track.id)) {
           selectedTracks.push(track);
-          seenIds.add(id);
+          const mainArtist = track.artists[0]?.name || 'Unknown';
+          selectedArtists.set(mainArtist, (selectedArtists.get(mainArtist) || 0) + 1);
         }
       }
     }
 
-    // Optimize track order for automix
-    console.log('🔧 Optimizing track order for automix...');
-    const optimizedPlaylist = optimizeTrackOrder(selectedTracks, {
+    console.log(`  ✓ Added ${selectedTracks.length} tracks from Include artists`);
+
+    // Second pass: fill with highest-scored tracks, enforcing variety
+    for (const track of rankedTracks) {
+      if (selectedTracks.length >= targetCount) break;
+      if (selectedTracks.find(t => t.id === track.id)) continue;
+
+      const mainArtist = track.artists[0]?.name || 'Unknown';
+      const artistCount = selectedArtists.get(mainArtist) || 0;
+
+      // Skip if this artist already has too many tracks
+      if (artistCount >= maxPerArtist) continue;
+
+      selectedTracks.push(track);
+      selectedArtists.set(mainArtist, artistCount + 1);
+    }
+
+    console.log(`  ✓ Selected ${selectedTracks.length} tracks`);
+    console.log(`  🎨 Artist variety: ${selectedArtists.size} unique artists`);
+
+    // Log artist distribution
+    const artistDist = Array.from(selectedArtists.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+    console.log(`  Top artists: ${artistDist.map(([a, c]) => `${a}(${c})`).join(', ')}`);
+
+    // ============================================
+    // STEP 6: OPTIMIZE ORDER FOR DJ MIXING
+    // ============================================
+    console.log('\n🔧 STEP 6: Optimizing track order for harmonic mixing...');
+
+    const optimizedPlaylist = optimizeTrackOrder(selectedTracks as SpotifyTrackWithFeatures[], {
       energyCurve: (constraints.energyCurve || energyCurve) as any,
       prioritizeHarmonic: true,
       prioritizeBPM: true,
     });
 
-    // Calculate playlist quality metrics
     const quality = calculatePlaylistQuality(optimizedPlaylist);
+    console.log(`  ✓ Harmonic mix: ${quality.harmonicMixPercentage}%`);
+    console.log(`  ✓ Quality score: ${quality.avgTransitionScore}/100`);
 
-    // Generate smart playlist name with AI
-    console.log('🎨 Generating creative playlist name...');
-    let playlistName;
-    let playlistDescription;
+    // ============================================
+    // STEP 7: CREATE SPOTIFY PLAYLIST
+    // ============================================
+    console.log('\n📝 STEP 7: Creating Spotify playlist...');
+
+    // Generate name (Claude - good at this)
+    let playlistName: string;
+    let playlistDescription: string;
 
     try {
       const characteristics = extractPlaylistCharacteristics(optimizedPlaylist, constraints, prompt);
       const nameResult = await generatePlaylistName(characteristics, prompt, 'creative');
-
       playlistName = `🎧 DAD: ${nameResult.withBranding}`;
-      playlistDescription = `${nameResult.description}\n\n🤖 2-Pass AI Curated • ${quality.harmonicMixPercentage}% harmonic • Score: ${quality.avgTransitionScore}/100 • djay Pro optimized`;
-
-      console.log(`✓ Generated name: "${playlistName}"`);
-    } catch (error) {
-      console.warn('⚠️  Smart naming failed, using fallback:', error);
+      playlistDescription = `${nameResult.description}\n\n🤖 Deterministic Selection • ${quality.harmonicMixPercentage}% harmonic • ${selectedArtists.size} artists`;
+    } catch {
       const characteristics = extractPlaylistCharacteristics(optimizedPlaylist, constraints, prompt);
       const fallback = generateSimpleName(characteristics, prompt);
       playlistName = `🎧 DAD: ${fallback.withBranding}`;
-      playlistDescription = `${fallback.description}\n\n🤖 2-Pass AI Curated • ${quality.harmonicMixPercentage}% harmonic • Score: ${quality.avgTransitionScore}/100`;
+      playlistDescription = fallback.description;
     }
 
-    // Sanitize and validate playlist name and description for Spotify API
-    // Remove problematic characters and normalize whitespace
+    // Sanitize
     playlistName = playlistName
-      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .trim();
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .substring(0, 100);
 
     playlistDescription = playlistDescription
-      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
-      .replace(/\n/g, ' ') // Replace newlines with spaces for Spotify API compatibility
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .trim();
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+      .replace(/\n/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .substring(0, 300);
 
-    // Validate length (Spotify limits)
-    if (playlistName.length > 100) {
-      playlistName = playlistName.substring(0, 97) + '...';
-      console.warn('⚠️  Playlist name truncated to 100 chars');
-    }
-    if (playlistDescription.length > 300) {
-      playlistDescription = playlistDescription.substring(0, 297) + '...';
-      console.warn('⚠️  Playlist description truncated to 300 chars');
-    }
+    console.log(`  Name: ${playlistName}`);
 
-    // Create Spotify playlist
-    console.log('📝 Creating Spotify playlist...');
-    console.log('  Name:', playlistName);
-    console.log('  Name length:', playlistName.length, 'chars');
-    console.log('  Description:', playlistDescription.substring(0, 100) + '...');
-    console.log('  Description length:', playlistDescription.length, 'chars');
-    console.log('  User ID:', user.id);
-
+    // Create playlist
     const playlistResponse = await fetch(
       `https://api.spotify.com/v1/users/${user.id}/playlists`,
       {
@@ -630,26 +517,18 @@ export async function POST(request: NextRequest) {
 
     if (!playlistResponse.ok) {
       const errorBody = await playlistResponse.text();
-      console.error('❌ Spotify playlist creation failed:', {
-        status: playlistResponse.status,
-        statusText: playlistResponse.statusText,
-        body: errorBody,
-        userId: user.id,
-        playlistName,
-      });
+      console.error('❌ Playlist creation failed:', errorBody);
       return NextResponse.json({
         error: 'Failed to create playlist',
         details: errorBody,
-        status: playlistResponse.status,
-        hint: playlistResponse.status === 401 ? 'Token may have expired' : undefined
       }, { status: 500 });
     }
 
     const playlist = await playlistResponse.json();
 
-    // Add tracks in optimized order
+    // Add tracks
     const trackUris = optimizedPlaylist.map(t => `spotify:track:${t.id}`);
-    console.log(`🎵 Adding ${trackUris.length} tracks to playlist...`);
+    console.log(`  Adding ${trackUris.length} tracks...`);
 
     const addTracksResponse = await fetch(
       `https://api.spotify.com/v1/playlists/${playlist.id}/tracks`,
@@ -665,48 +544,42 @@ export async function POST(request: NextRequest) {
 
     if (!addTracksResponse.ok) {
       const errorBody = await addTracksResponse.text();
-      console.error('❌ Failed to add tracks to playlist:', {
-        status: addTracksResponse.status,
-        statusText: addTracksResponse.statusText,
-        body: errorBody,
-        playlistId: playlist.id,
-        trackCount: trackUris.length,
-      });
+      console.error('❌ Failed to add tracks:', errorBody);
       return NextResponse.json({
         error: 'Failed to add tracks',
         details: errorBody,
-        status: addTracksResponse.status,
-        playlistId: playlist.id
       }, { status: 500 });
     }
-    console.log('✓ Tracks added successfully');
 
-    // Generate and upload cover art
+    // ============================================
+    // STEP 8: GENERATE COVER ART
+    // ============================================
     let coverArtUrl: string | undefined;
     try {
-      console.log('🎨 Generating AI cover art...');
+      console.log('\n🎨 STEP 8: Generating cover art...');
       const characteristics = extractPlaylistCharacteristics(optimizedPlaylist, constraints, prompt);
-
       coverArtUrl = await generateAndUploadCoverArt(
         {
-          playlistName: playlistName,
-          emoji: playlistName.charAt(0), // Extract emoji from playlist name
+          playlistName,
+          emoji: '🎧',
           genres: characteristics.genres,
           vibe: playlistDescription,
           energy: characteristics.energyRange.max,
           topArtists: characteristics.topArtists,
-          beatportGenre: constraints.beatportGenre,
         },
         playlist.id,
         accessToken!
       );
-      console.log('✅ Cover art uploaded!');
+      console.log('  ✓ Cover art uploaded');
     } catch (error) {
-      console.warn('⚠️  Cover art generation failed (continuing anyway):', error);
-      // Don't fail the whole request if cover art fails
+      console.warn('  ⚠️ Cover art failed:', error);
     }
 
-    console.log('✅ Playlist created successfully!');
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log('\n' + '='.repeat(60));
+    console.log(`✅ PLAYLIST CREATED IN ${duration}s`);
+    console.log(`   ${playlist.external_urls.spotify}`);
+    console.log('='.repeat(60) + '\n');
 
     const response = NextResponse.json({
       playlistUrl: playlist.external_urls.spotify,
@@ -714,24 +587,22 @@ export async function POST(request: NextRequest) {
       playlistName: playlist.name,
       coverArtUrl,
       trackCount: optimizedPlaylist.length,
+      artistCount: selectedArtists.size,
       quality,
       constraints: summarizeConstraints(constraints),
-      personalizedWith: topArtists.length,
-      message: `🎉 Created with 2-pass AI curation: ${quality.harmonicMixPercentage}% harmonic mix, ${quality.avgTransitionScore}/100 quality score`,
-      // Include tracks for export
+      message: `Created with ${selectedArtists.size} different artists • ${quality.harmonicMixPercentage}% harmonic mix`,
       tracks: optimizedPlaylist,
     });
 
-    // If token was refreshed, update the cookie
+    // Update cookie if token was refreshed
     if (accessToken && accessToken !== request.cookies.get('spotify_access_token')?.value) {
       response.cookies.set('spotify_access_token', accessToken, {
         httpOnly: true,
         secure: true,
-        maxAge: 3600, // 1 hour
+        maxAge: 3600,
         sameSite: 'lax',
         path: '/',
       });
-      console.log('🔄 Updated access token cookie');
     }
 
     return response;
