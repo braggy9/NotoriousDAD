@@ -225,6 +225,55 @@ Claude AI is used ONLY for:
    - In Spotify Developer Dashboard, add: `https://your-app.vercel.app/api/auth/callback`
    - Update `SPOTIFY_REDIRECT_URI` in Vercel environment variables
 
+## 📱 Native Apps
+
+Native SwiftUI apps for iOS and macOS that provide the same playlist generation on your Apple devices.
+
+### iOS App (NotoriousDAD-iOS)
+
+**Features**:
+- Native iOS experience with SwiftUI
+- Same powerful backend as web app
+- Generates playlists directly to your Spotify
+
+**Building**:
+```bash
+cd NotoriousDAD-iOS
+open NotoriousDAD.xcodeproj
+# Build to device (requires Apple Developer account)
+```
+
+### macOS App (NotoriousDAD-macOS)
+
+**Features**:
+- Native macOS experience with SwiftUI
+- Menubar-friendly design
+- Same API integration as iOS app
+
+**Building**:
+```bash
+cd NotoriousDAD-macOS
+open NotoriousDAD.xcodeproj
+# Build and run
+```
+
+Or via command line:
+```bash
+xcodebuild -project NotoriousDAD-macOS/NotoriousDAD.xcodeproj \
+  -scheme "NotoriousDAD-macOS" -configuration Release build
+```
+
+### How Native Apps Work
+
+Both iOS and macOS apps share the same authentication pattern:
+- Use the web API at dj-mix-generator.vercel.app
+- Pass Spotify `refresh_token` in API request body (bypasses cookie-based auth)
+- Bundled tokens in `Resources/spotify-tokens.json`
+
+See `CLAUDE.md` for detailed native app development documentation.
+
+---
+
 ## 🛠️ Tech Stack
 
 - **Framework:** Next.js 16 (App Router)
@@ -233,6 +282,7 @@ Claude AI is used ONLY for:
 - **Database:** Vercel Postgres (PostgreSQL)
 - **Deployment:** Vercel (Serverless)
 - **Styling:** Tailwind CSS
+- **iOS:** SwiftUI + SpotifyWebAPI package
 
 ## 📚 Additional Documentation
 

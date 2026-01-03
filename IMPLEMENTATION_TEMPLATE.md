@@ -1,5 +1,8 @@
 # Implementation Template - Environment Validation Pattern
 
+> **REFERENCE DOCUMENT**: This template shows environment validation patterns.
+> These patterns are already implemented in the codebase.
+
 This document shows how to implement the environment validation in your API routes when you build out the DJ Mix Generator features described in the PROJECT_STATUS_ANALYSIS.
 
 ## Example: Generate Mix Endpoint

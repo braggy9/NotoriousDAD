@@ -1,0 +1,264 @@
+{
+  "source": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/NotoriousDAD/Views/ContentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Notorious DAD",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 28
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld tracks loaded",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 56
+        }
+      },
+      {
+        "comment": "",
+        "key": "Spotify Connected",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 47
+        }
+      },
+      {
+        "comment": "",
+        "key": "Connect Spotify",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 50
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter a prompt above to generate your first mix",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 165
+        }
+      },
+      {
+        "comment": "",
+        "key": "No Playlist Yet",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 163
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generate Playlist",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 106
+        }
+      },
+      {
+        "comment": "",
+        "key": "New",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 112
+        }
+      },
+      {
+        "comment": "",
+        "key": "Describe your mix:",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 122
+        }
+      },
+      {
+        "comment": "",
+        "key": "Example: Include: Fred again, Disclosure. 30 tracks. Energy: build",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 133
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generating...",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 145
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generate Mix",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 147
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld tracks • %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 228
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld artists",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 237
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 254
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 279
+        }
+      },
+      {
+        "comment": "",
+        "key": "Library",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 296
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld tracks",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 298
+        }
+      },
+      {
+        "comment": "",
+        "key": "Track browsing and MIK import coming soon",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 305
+        }
+      },
+      {
+        "comment": "",
+        "key": "Library View",
+        "location": {
+          "startingColumn": 17,
+          "startingLine": 303
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generated playlists will appear here",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 317
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your Playlists",
+        "location": {
+          "startingColumn": 13,
+          "startingLine": 315
+        }
+      },
+      {
+        "comment": "",
+        "key": "New Playlist",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 327
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quick playlist creation wizard coming soon...",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 330
+        }
+      },
+      {
+        "comment": "",
+        "key": "Close",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 333
+        }
+      },
+      {
+        "comment": "",
+        "key": "Spotify",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 348
+        }
+      },
+      {
+        "comment": "",
+        "key": "Library",
+        "location": {
+          "startingColumn": 21,
+          "startingLine": 362
+        }
+      },
+      {
+        "comment": "",
+        "key": "Connected",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 350
+        }
+      },
+      {
+        "comment": "",
+        "key": "Disconnect",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 352
+        }
+      },
+      {
+        "comment": "",
+        "key": "Connect to Spotify",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 356
+        }
+      },
+      {
+        "comment": "",
+        "key": "MIK CSV import settings",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 363
+        }
+      },
+      {
+        "comment": "",
+        "key": "Apple Music sync settings",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 364
+        }
+      }
+    ]
+  },
+  "version": 1
+}

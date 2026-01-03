@@ -337,7 +337,7 @@ struct GenerateView: View {
         }
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let playlistURL = json["playlistURL"] as? String else {
+              let playlistURL = json["playlistUrl"] as? String else {
             throw GenerationError.invalidResponse
         }
 

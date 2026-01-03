@@ -1,0 +1,33 @@
+{
+  "": {
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/master.swiftdeps"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/Sources/NotoriousDAD/NotoriousDADApp.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/NotoriousDADApp.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/NotoriousDADApp.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/NotoriousDADApp~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/NotoriousDADApp.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/NotoriousDADApp.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/Sources/NotoriousDAD/Services/LibraryManager.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/LibraryManager.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/LibraryManager.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/LibraryManager~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/LibraryManager.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/LibraryManager.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/Sources/NotoriousDAD/Services/SpotifyManager.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/SpotifyManager.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/SpotifyManager.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/SpotifyManager~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/SpotifyManager.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/SpotifyManager.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/Sources/NotoriousDAD/Views/ContentView.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/ContentView.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/ContentView.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/ContentView~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/ContentView.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/NotoriousDAD.build/ContentView.dia"
+  }
+}

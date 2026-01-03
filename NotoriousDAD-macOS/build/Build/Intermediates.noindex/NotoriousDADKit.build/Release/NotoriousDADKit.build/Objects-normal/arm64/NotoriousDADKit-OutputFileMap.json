@@ -1,0 +1,46 @@
+{
+  "" : {
+    "const-values" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/NotoriousDADKit-primary.swiftconstvalues",
+    "dependencies" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/NotoriousDADKit-primary.d",
+    "diagnostics" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/NotoriousDADKit-primary.dia",
+    "emit-module-dependencies" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/NotoriousDADKit-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/NotoriousDADKit-primary-emit-module.dia",
+    "pch" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/NotoriousDADKit-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/NotoriousDADKit-primary.swiftdeps"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/Camelot/CamelotWheel.swift" : {
+    "index-unit-output-path" : "/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/CamelotWheel.o",
+    "llvm-bc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/CamelotWheel.bc",
+    "object" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/CamelotWheel.o"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/Models/Constraints.swift" : {
+    "index-unit-output-path" : "/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/Constraints.o",
+    "llvm-bc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/Constraints.bc",
+    "object" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/Constraints.o"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/Models/Playlist.swift" : {
+    "index-unit-output-path" : "/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/Playlist.o",
+    "llvm-bc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/Playlist.bc",
+    "object" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/Playlist.o"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/Models/Track.swift" : {
+    "index-unit-output-path" : "/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/Track.o",
+    "llvm-bc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/Track.bc",
+    "object" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/Track.o"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/NotoriousDADKit.swift" : {
+    "index-unit-output-path" : "/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/NotoriousDADKit.o",
+    "llvm-bc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/NotoriousDADKit.bc",
+    "object" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/NotoriousDADKit.o"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/Selection/HarmonicOptimizer.swift" : {
+    "index-unit-output-path" : "/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/HarmonicOptimizer.o",
+    "llvm-bc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/HarmonicOptimizer.bc",
+    "object" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/HarmonicOptimizer.o"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/Selection/SelectionEngine.swift" : {
+    "index-unit-output-path" : "/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/SelectionEngine.o",
+    "llvm-bc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/SelectionEngine.bc",
+    "object" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/build/Build/Intermediates.noindex/NotoriousDADKit.build/Release/NotoriousDADKit.build/Objects-normal/arm64/SelectionEngine.o"
+  }
+}

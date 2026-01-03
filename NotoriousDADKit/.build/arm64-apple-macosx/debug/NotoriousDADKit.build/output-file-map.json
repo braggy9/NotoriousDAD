@@ -1,0 +1,54 @@
+{
+  "": {
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/master.swiftdeps"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/Camelot/CamelotWheel.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/CamelotWheel.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/CamelotWheel.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/CamelotWheel~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/CamelotWheel.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/CamelotWheel.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/Models/Constraints.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Constraints.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Constraints.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Constraints~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Constraints.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Constraints.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/Models/Playlist.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Playlist.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Playlist.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Playlist~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Playlist.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Playlist.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/Models/Track.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Track.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Track.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Track~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Track.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/Track.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/NotoriousDADKit.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/NotoriousDADKit.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/NotoriousDADKit.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/NotoriousDADKit~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/NotoriousDADKit.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/NotoriousDADKit.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/Selection/HarmonicOptimizer.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/HarmonicOptimizer.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/HarmonicOptimizer.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/HarmonicOptimizer~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/HarmonicOptimizer.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/HarmonicOptimizer.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/Sources/NotoriousDADKit/Selection/SelectionEngine.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/SelectionEngine.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/SelectionEngine.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/SelectionEngine~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/SelectionEngine.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKit.build/SelectionEngine.dia"
+  }
+}

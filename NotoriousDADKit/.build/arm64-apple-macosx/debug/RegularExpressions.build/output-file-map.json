@@ -1,0 +1,82 @@
+{
+  "": {
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/master.swiftdeps"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/checkouts/RegularExpressions/Sources/RegularExpressions/Regex Methods/PatternMatching.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/PatternMatching.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/PatternMatching.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/PatternMatching~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/PatternMatching.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/PatternMatching.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/checkouts/RegularExpressions/Sources/RegularExpressions/Regex Methods/RegexFindAll.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexFindAll.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexFindAll.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexFindAll~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexFindAll.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexFindAll.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/checkouts/RegularExpressions/Sources/RegularExpressions/Regex Methods/RegexMatch.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatch.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatch.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatch~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatch.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatch.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/checkouts/RegularExpressions/Sources/RegularExpressions/Regex Methods/RegexMatchWrapper.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatchWrapper.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatchWrapper.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatchWrapper~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatchWrapper.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatchWrapper.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/checkouts/RegularExpressions/Sources/RegularExpressions/Regex Methods/RegexSplit.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSplit.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSplit.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSplit~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSplit.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSplit.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/checkouts/RegularExpressions/Sources/RegularExpressions/Regex Methods/RegexSub.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSub.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSub.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSub~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSub.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSub.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/checkouts/RegularExpressions/Sources/RegularExpressions/Regex Methods/RegexSubReplacer.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSubReplacer.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSubReplacer.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSubReplacer~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSubReplacer.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexSubReplacer.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/checkouts/RegularExpressions/Sources/RegularExpressions/Regex Objects/Regex.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/Regex.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/Regex.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/Regex~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/Regex.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/Regex.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/checkouts/RegularExpressions/Sources/RegularExpressions/Regex Objects/RegexError.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexError.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexError.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexError~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexError.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexError.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/checkouts/RegularExpressions/Sources/RegularExpressions/Regex Objects/RegexGroup.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexGroup.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexGroup.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexGroup~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexGroup.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexGroup.dia"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/checkouts/RegularExpressions/Sources/RegularExpressions/Regex Objects/RegexMatchStruct.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatchStruct.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatchStruct.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatchStruct~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatchStruct.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/RegularExpressions.build/RegexMatchStruct.dia"
+  }
+}

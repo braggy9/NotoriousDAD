@@ -83,11 +83,14 @@ async function refreshAccessToken(refreshToken: string): Promise<{ access_token:
  * DETERMINISTIC TRACK SELECTION - No AI, just math
  *
  * Selection Score = sum of:
- * - Apple Music playcount (normalized 0-40 points) - what you actually play
+ * - In library (30 points) - track exists in your Apple Music/MIK library
  * - MIK data presence (20 points) - professional analysis available
  * - Constraint match (0-20 points) - fits BPM/energy/genre
  * - Artist match (20 points) - matches Include/Reference artists
  * - Randomness (0-10 points) - variety
+ *
+ * NOTE: Playcount weighting disabled due to XML parser bug mixing up
+ * sample rates with play counts. Will re-enable after parser fix.
  */
 function calculateSelectionScore(
   track: SpotifyTrackWithFeatures,
@@ -98,9 +101,11 @@ function calculateSelectionScore(
 ): number {
   let score = 0;
 
-  // 1. Apple Music playcount (0-40 points) - MOST IMPORTANT
-  // Normalize: 0 plays = 0, 10+ plays = 40 points
-  score += Math.min(applePlayCount * 4, 40);
+  // 1. In library (30 points) - flat bonus for being in your library
+  // NOTE: Playcount weighting disabled - parser bug mixes sample rate with playcount
+  if (applePlayCount > 0 || track.source === 'mik-library') {
+    score += 30;
+  }
 
   // 2. MIK data presence (20 points)
   if (track.mikData || track.camelotKey) {

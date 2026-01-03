@@ -53,9 +53,17 @@ Selection Score = sum of:
 - Apple Music playcount (0-40 points) - what you ACTUALLY play
 - MIK data presence (20 points) - professional analysis available
 - Constraint match (0-20 points) - fits BPM/energy requirements
-- Artist match (10-20 points) - Include/Reference artists
+- Artist match (20 points) - Include artists get priority
 - Random factor (0-10 points) - variety
 ```
+
+### Two-Phase Quality Approach
+
+**Phase 1 - Selection**: Picks tracks weighted by personal listening habits (playcounts) and artist preferences. Include artists get strong priority (20 points + Spotify search).
+
+**Phase 2 - Ordering**: After selection, tracks are reordered using `optimizeTrackOrder()` with `prioritizeHarmonic: true` for Camelot-based harmonic mixing and smooth BPM transitions.
+
+> **Note**: Include artists are heavily weighted in selection. For a more balanced mix, use fewer Include artists or use them as Reference artists instead.
 
 ### Variety Enforcement
 
@@ -140,10 +148,11 @@ OPENAI_API_KEY=...
 
 ## Apple Music Matching
 
-### Current Status
+### Current Status (Updated 2026-01-03)
 - Total Apple Music tracks: 48,474
-- Matched to Spotify: 27,632
-- Remaining to match: ~14,174
+- Matched to Spotify: ~40,000 (82%+)
+- With playcounts: ~7,000+
+- Remaining to match: ~8,500
 
 ### Running the Matcher
 
@@ -195,11 +204,84 @@ vercel logs dj-mix-generator.vercel.app --since 5m
 
 | Date | Change |
 |------|--------|
+| Jan 3, 2026 | Fixed native app auth: parse request body once, accept tokens from body |
+| Jan 3, 2026 | Added macOS app with same architecture as iOS |
+| Jan 3, 2026 | Fixed artist null check in selection scoring |
 | Jan 1, 2026 | **v2.0**: Switched to deterministic selection (removed Claude from track picking) |
 | Jan 1, 2026 | Added Apple Music playcount weighting |
 | Jan 1, 2026 | Integrated full Apple Music checkpoint (27k+ tracks) |
 | Dec 31, 2025 | Added Spotify catalog search for Include artists |
 | Dec 28, 2025 | Initial MIK + Spotify integration |
+
+## iOS/macOS Native Apps
+
+Both native apps use the same architecture and authentication pattern.
+
+### Authentication Solution (2026-01-03)
+
+**Problem**: Web API uses cookie-based auth, but native iOS/macOS apps can't use browser cookies.
+
+**Solution**: Native apps send `refresh_token` directly in API request body:
+```swift
+let body: [String: Any] = [
+    "prompt": prompt,
+    "refresh_token": "AQB1..." // Long-lived refresh token
+]
+```
+
+**API Implementation** (`app/api/generate-playlist/route.ts`):
+1. Parse request body ONCE (critical - body stream can only be consumed once)
+2. Try cookies first (web app)
+3. Fall back to tokens from body (native apps)
+4. Use refresh_token to get fresh access_token
+
+### NotoriousDAD-iOS
+
+Native SwiftUI app located in `NotoriousDAD-iOS/` directory.
+
+**Key Files**:
+- `NotoriousDAD-iOS/NotoriousDAD/Services/SpotifyManager.swift` - Spotify auth management
+- `NotoriousDAD-iOS/NotoriousDAD/Views/ContentView.swift` - Main UI and API calls
+- `NotoriousDAD-iOS/NotoriousDAD/Resources/spotify-tokens.json` - Bundled refresh token
+
+**Building**:
+```bash
+cd NotoriousDAD-iOS
+open NotoriousDAD.xcodeproj
+# Build and run to device (requires Apple Developer account)
+```
+
+### NotoriousDAD-macOS
+
+Native SwiftUI app located in `NotoriousDAD-macOS/` directory.
+
+**Key Files**:
+- `NotoriousDAD-macOS/NotoriousDAD/Views/ContentView.swift` - Main UI and API calls
+- `NotoriousDAD-macOS/NotoriousDAD/Resources/spotify-tokens.json` - Bundled refresh token
+
+**Building**:
+```bash
+cd NotoriousDAD-macOS
+open NotoriousDAD.xcodeproj
+# Build and run
+```
+
+Or via command line:
+```bash
+xcodebuild -project NotoriousDAD-macOS/NotoriousDAD.xcodeproj \
+  -scheme "NotoriousDAD-macOS" -configuration Release build
+```
+
+### Token Setup (Both Apps)
+
+Both apps include a bundled `spotify-tokens.json` with refresh_token. To update:
+1. Authenticate via web app to get fresh tokens
+2. Export tokens to app's `Resources/spotify-tokens.json`
+3. Rebuild and reinstall app
+
+**Note**: Spotify refresh tokens don't expire unless revoked by the user.
+
+---
 
 ## Debugging
 

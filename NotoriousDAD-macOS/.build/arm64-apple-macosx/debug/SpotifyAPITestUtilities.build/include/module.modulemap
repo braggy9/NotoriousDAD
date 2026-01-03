@@ -1,0 +1,3 @@
+module SpotifyAPITestUtilities {
+    header "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/SpotifyAPITestUtilities.build/include/SpotifyAPITestUtilities-Swift.h"
+}

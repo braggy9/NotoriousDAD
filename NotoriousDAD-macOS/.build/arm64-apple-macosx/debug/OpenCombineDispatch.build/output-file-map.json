@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/OpenCombineDispatch.build/master.swiftdeps"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/checkouts/OpenCombine/Sources/OpenCombineDispatch/DispatchQueue+Scheduler.swift": {
+    "dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/OpenCombineDispatch.build/DispatchQueue+Scheduler.d",
+    "object": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/OpenCombineDispatch.build/DispatchQueue+Scheduler.swift.o",
+    "swiftmodule": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/OpenCombineDispatch.build/DispatchQueue+Scheduler~partial.swiftmodule",
+    "swift-dependencies": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/OpenCombineDispatch.build/DispatchQueue+Scheduler.swiftdeps",
+    "diagnostics": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/OpenCombineDispatch.build/DispatchQueue+Scheduler.dia"
+  }
+}

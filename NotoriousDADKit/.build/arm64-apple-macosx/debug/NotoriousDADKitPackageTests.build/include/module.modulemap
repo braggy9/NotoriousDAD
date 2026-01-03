@@ -1,0 +1,3 @@
+module NotoriousDADKitPackageTests {
+    header "/Users/tombragg/dj-mix-generator/NotoriousDADKit/.build/arm64-apple-macosx/debug/NotoriousDADKitPackageTests.build/include/NotoriousDADKitPackageTests-Swift.h"
+}

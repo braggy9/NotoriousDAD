@@ -1,0 +1,24 @@
+{
+  "source": "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/NotoriousDAD/NotoriousDADApp.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "New Playlist...",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 26
+        }
+      },
+      {
+        "comment": "",
+        "key": "Import MIK CSV...",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 32
+        }
+      }
+    ]
+  },
+  "version": 1
+}

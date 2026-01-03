@@ -1,0 +1,3 @@
+module SpotifyWebAPI {
+    header "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/SpotifyWebAPI.build/include/SpotifyWebAPI-Swift.h"
+}

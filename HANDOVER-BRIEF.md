@@ -258,6 +258,12 @@ For "Include: Fred again, Rufus du sol, Disclosure" (3 artists) in a 34-track pl
 - Apple Music favorites prioritized
 - MIK harmonic data utilized when available
 
+**Quality Approach (Two-Phase)**:
+1. **Selection Phase**: Weighted by playcounts + Include artist priority
+2. **Ordering Phase**: Harmonic mixing via Camelot wheel, smooth BPM transitions
+
+> Include artists are heavily weighted. If you want a more balanced mix, use fewer Include artists or list them as Reference instead.
+
 ---
 
 ## Next Steps
@@ -334,6 +340,55 @@ A successful implementation should:
 **Remaining Work**:
 - Complete Apple Music matching (~11k tracks remaining, running in background)
 - Redeploy when matching complete
-- Consider Swift native app for iOS/macOS
+
+---
+
+## iOS/macOS Native Apps (2026-01-03)
+
+### Both Apps DEPLOYED AND WORKING
+
+Native SwiftUI apps successfully built and deployed.
+
+**Problem Solved**: Native apps can't use browser cookies for authentication.
+
+**Critical Bug Fixed (2026-01-03)**:
+- **Root Cause**: `request.json()` was called twice in API route
+- In JavaScript, request body streams can only be consumed once
+- Second call returned empty, so tokens from body were never read
+- **Fix**: Parse body ONCE at start, extract all fields including tokens
+
+**Additional Fix**:
+- Added null check for artist names in selection scoring
+- Some tracks had `undefined` artist.name causing crashes
+
+**Key Changes**:
+1. `app/api/generate-playlist/route.ts` - Parse body once, accept tokens from body
+2. `NotoriousDAD-iOS/.../ContentView.swift` - Include refresh_token in API requests
+3. `NotoriousDAD-macOS/.../ContentView.swift` - Include refresh_token + fix response key
+4. Both apps use bundled `spotify-tokens.json`
+
+**Architecture**:
+```
+Native App → POST /api/generate-playlist
+             Body: { prompt: "...", refresh_token: "AQB1..." }
+                         ↓
+Web API → Parses body ONCE (critical!)
+       → Tries cookies first (web app)
+       → Falls back to tokens from body (native apps)
+       → Refreshes access token if needed
+       → Generates playlist
+                         ↓
+Native App ← Response: { playlistUrl: "..." }
+```
+
+**macOS-Specific Fix**:
+- Changed response key from `playlistURL` to `playlistUrl` (case sensitivity)
+
+**Token Refresh Flow**:
+- Native apps bundle a refresh_token
+- Web API uses it to get fresh access_token
+- Spotify refresh tokens don't expire (unless revoked)
+
+---
 
 The system now uses 30,000+ tracks from your personal library, weighted by what you actually listen to.
