@@ -38,11 +38,12 @@ The system uses **YOUR personal music** from multiple sources:
 
 | Source | File | Count | Purpose |
 |--------|------|-------|---------|
-| **MIK Library** | `data/matched-tracks.json` | 4,080 | Professional key/BPM analysis from Mixed In Key |
+| **MIK Library** | `data/matched-tracks.json` | 6,996 | Professional key/BPM analysis from Mixed In Key (70% match rate) |
 | **Apple Music** | `data/apple-music-checkpoint.json` | 27,632+ | Your listening history with playcounts |
 | **Spotify Search** | (runtime) | Variable | Tracks from Include artists |
 
-**Total pool: 30,000+ tracks** from your personal libraries.
+**Total pool: 34,000+ tracks** from your personal libraries.
+**Last sync:** January 7, 2026 - Processed 9,933 MIK tracks → 6,996 matched to Spotify
 
 ### Selection Score Algorithm
 
@@ -335,6 +336,34 @@ curl -s -X GET "https://api.digitalocean.com/v2/droplets/542000423" \
 - Saves progress every 100 tracks
 - Can resume from checkpoint
 
+## Mix Recipe Feature
+
+The **Mix Recipe API** (`/api/mix-recipe`) analyzes Spotify playlists for DJ mixing:
+
+### What it does:
+- ✅ Analyzes harmonic compatibility between tracks
+- ✅ Generates transition recommendations (key changes, BPM shifts)
+- ✅ Creates cue sheets for djay Pro
+- ✅ Exports mix notes in Markdown or JSON format
+- ✅ Calculates mix difficulty score
+
+### What it doesn't do:
+- ❌ Generate actual audio files (only analysis/planning)
+- ❌ Download Spotify tracks (uses Spotify API metadata only)
+
+### Usage:
+```
+GET /api/mix-recipe?playlistId=spotify:playlist:xxxxx&format=json|markdown|cuesheet
+POST /api/mix-recipe { tracks: [...], playlistName: "Mix" }
+```
+
+### Future enhancement:
+To generate audio mixes from Spotify playlists, you'd need to:
+1. Match playlist tracks to audio library files
+2. Find which tracks exist locally
+3. Pass matched local files to `/api/generate-mix`
+4. Handle missing tracks gracefully
+
 ## Include vs Reference Artists
 
 **Include Artists** (MUST appear):
@@ -394,6 +423,10 @@ When incrementing versions, update all three files:
 
 | Date | Change |
 |------|--------|
+| Jan 7, 2026 | Deployed iOS app to TestFlight (v2.1.0 build 2) |
+| Jan 7, 2026 | Synced MIK library: 6,996 tracks (70% match rate from 9,933 MIK files) |
+| Jan 7, 2026 | Fixed DigitalOcean deployment to include matched-tracks.json |
+| Jan 7, 2026 | Removed alpha channel from iOS app icon for TestFlight compliance |
 | Jan 6, 2026 | Added server-side audio library with BPM analysis (aubio) |
 | Jan 6, 2026 | Created Mix Generation API (`/api/generate-mix`) for audio mixes |
 | Jan 6, 2026 | Added auto-restart monitor script for analysis reliability |
@@ -483,6 +516,59 @@ Both apps include a bundled `spotify-tokens.json` with refresh_token. To update:
 3. Rebuild and reinstall app
 
 **Note**: Spotify refresh tokens don't expire unless revoked by the user.
+
+### TestFlight Deployment
+
+**Status:** iOS app deployed to TestFlight (Jan 7, 2026)
+- **Version:** 2.1.0 (Build 2)
+- **Platform:** iOS (iPhone/iPad)
+- **Access:** Internal testing (up to 100 testers)
+
+**TestFlight Process:**
+1. Archive app in Xcode (Product → Archive)
+2. Upload via Organizer → Distribute App → App Store Connect
+3. Wait for processing (~5-10 minutes)
+4. Add testers in App Store Connect → TestFlight tab
+5. Testers receive invite via TestFlight app
+
+**Common Issues Fixed:**
+- ❌ App icon alpha channel → Use sips to convert JPEG→PNG
+- ❌ Build warnings → Fix unused variables
+- ❌ Uncommitted changes → Commit before archiving
+
+---
+
+## Known Issues
+
+### GitHub Push Blocked (Large Files in History)
+
+**Issue:** Cannot push commits to GitHub due to large files in git history:
+- `NotoriousDAD-iOS/NotoriousDAD/Resources/apple-music-checkpoint.json` (351 MB)
+- `NotoriousDAD-macOS/build/SourcePackages/.../pack-*.pack` (71 MB)
+
+**Impact:**
+- ✅ DigitalOcean server has latest code and data (deployed via rsync)
+- ⚠️ Vercel deployment stuck on old version (4,080 tracks vs 6,996)
+- ✅ iOS/macOS apps work fine (use Vercel or DigitalOcean endpoints)
+
+**Solution (when convenient):**
+Use BFG Repo Cleaner or git filter-repo to remove large files from history:
+```bash
+# Install BFG
+brew install bfg
+
+# Remove large files from history
+bfg --delete-files apple-music-checkpoint.json
+bfg --strip-blobs-bigger-than 50M
+
+# Force push (careful!)
+git push origin main --force
+```
+
+**Workaround (current):**
+- Use DigitalOcean server (`mixmaster.mixtape.run`) as primary production
+- Vercel still functional, just with smaller library
+- Update iOS app to use DigitalOcean endpoint for full 6,996-track library
 
 ---
 
