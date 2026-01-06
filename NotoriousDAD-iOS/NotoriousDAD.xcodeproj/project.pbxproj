@@ -25,8 +25,8 @@
 		B1000002201D00000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B1000002201D00000003 /* SpotifyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyManager.swift; sourceTree = "<group>"; };
 		B1000002201D00000004 /* LibraryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryManager.swift; sourceTree = "<group>"; };
-		B1000002201D00000005NM /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		B1000002201D00000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B1000002201D00000005NM /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		B1000002201D00000007 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1000002201D00000020 /* matched-tracks.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "matched-tracks.json"; sourceTree = "<group>"; };
 		B1000002201D00000021 /* apple-music-checkpoint.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "apple-music-checkpoint.json"; sourceTree = "<group>"; };
