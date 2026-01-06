@@ -65,7 +65,7 @@ class SpotifyManager: ObservableObject {
             }
 
             let (_, response) = try await URLSession.shared.data(from: url)
-            if let httpResponse = response as? HTTPURLResponse {
+            if response is HTTPURLResponse {
                 // Any response means the server is up
                 isAuthenticated = true
             } else {
