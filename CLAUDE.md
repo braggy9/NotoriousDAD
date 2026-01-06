@@ -168,9 +168,23 @@ Spotify Library (Liked Songs + Playlists)
 
 ### Documentation
 
-See symlinked docs: [SPOTIFY-DOWNLOADER.md](./SPOTIFY-DOWNLOADER.md) (symlink to `~/spotify-library-downloader/README.md`)
+| Symlink | Source | Purpose |
+|---------|--------|---------|
+| [SPOTIFY-DOWNLOADER.md](./SPOTIFY-DOWNLOADER.md) | `~/spotify-library-downloader/README.md` | Main docs - features, usage, workflow |
+| [SPOTIFY-AUTOMATION.md](./SPOTIFY-AUTOMATION.md) | `~/spotify-library-downloader/AUTOMATION.md` | launchd scheduling, daily automation |
 
-**Note**: The symlink is gitignored - only exists on your local machine.
+**Note**: Symlinks are gitignored - only exist on your local machine.
+
+### Syncing MIK Data to DJ Mix Generator
+
+After MIK analyzes new tracks, update the playlist generator:
+
+```bash
+cd ~/spotify-library-downloader
+npm run sync-mix-generator
+```
+
+This exports all MIK-analyzed tracks to `~/dj-mix-generator/data/matched-tracks.json` for playlist generation.
 
 ## Environment Variables
 

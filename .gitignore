@@ -47,6 +47,7 @@ CLAUDE.local.md
 
 # Symlinked documentation (local reference only)
 SPOTIFY-DOWNLOADER.md
+SPOTIFY-AUTOMATION.md
 
 # Large data files (too big for GitHub >100MB limit)
 *.xml
