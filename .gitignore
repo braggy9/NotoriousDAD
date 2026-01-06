@@ -62,3 +62,9 @@ logs/
 .env.keys
 .digitalocean-token
 .do-server-password
+
+# macOS build artifacts
+**/\.build/
+
+# Large data files
+apple-music-checkpoint.json

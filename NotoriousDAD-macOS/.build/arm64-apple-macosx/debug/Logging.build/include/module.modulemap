@@ -1,3 +1,0 @@
-module Logging {
-    header "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/Logging.build/include/Logging-Swift.h"
-}

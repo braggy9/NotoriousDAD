@@ -1,3 +1,0 @@
-module InMemoryLogging {
-    header "/Users/tombragg/dj-mix-generator/NotoriousDAD-macOS/.build/arm64-apple-macosx/debug/InMemoryLogging.build/include/InMemoryLogging-Swift.h"
-}
