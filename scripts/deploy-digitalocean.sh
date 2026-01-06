@@ -45,7 +45,6 @@ rsync -avz --progress \
   --exclude '*.xml' \
   --exclude '*.csv' \
   --exclude 'data/apple-music*' \
-  --exclude 'data/matched-tracks.json' \
   --exclude 'data/audio-library-index.json' \
   --exclude 'NotoriousDAD-iOS' \
   --exclude 'NotoriousDAD-macOS' \
