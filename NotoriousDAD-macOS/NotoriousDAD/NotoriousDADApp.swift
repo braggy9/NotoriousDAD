@@ -6,21 +6,27 @@ import SpotifyWebAPI
 struct NotoriousDADApp: App {
     @StateObject private var spotifyManager = SpotifyManager()
     @StateObject private var libraryManager = LibraryManager()
+    @StateObject private var notificationManager = NotificationManager.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(spotifyManager)
                 .environmentObject(libraryManager)
-                .frame(minWidth: 900, minHeight: 600)
+                .environmentObject(notificationManager)
+                .frame(minWidth: 1000, idealWidth: 1200, minHeight: 700, idealHeight: 800)
                 .onOpenURL { url in
                     // Handle Spotify OAuth callback
                     if url.scheme == "notoriousdad" {
                         spotifyManager.handleCallback(url: url)
                     }
                 }
+                .task {
+                    // Request notification permissions on macOS
+                    await notificationManager.requestAuthorization()
+                }
         }
-        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 1200, height: 800)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("New Playlist...") {

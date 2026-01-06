@@ -11,6 +11,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
     "@types/xml2js": "^0.4.14",
+    "@vercel/postgres": "^0.10.0",
+    "dotenv": "^17.2.3",
     "next": "16.0.10",
     "openai": "^6.15.0",
     "react": "19.2.1",

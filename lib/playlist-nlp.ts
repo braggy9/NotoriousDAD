@@ -41,6 +41,9 @@ export interface PlaylistConstraints {
   excludeArtists?: string[];
   mustIncludeTracks?: string[];
 
+  // Track familiarity preference
+  familiarityPreference?: 'deep-cuts' | 'hits' | 'mixed'; // deep cuts = low popularity, hits = popular tracks
+
   // Original prompt for context
   originalPrompt: string;
 }
@@ -52,12 +55,34 @@ export async function extractPlaylistConstraints(
   prompt: string
 ): Promise<PlaylistConstraints> {
   const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5-20250929',
+    model: 'claude-sonnet-4-20250514',
     max_tokens: 2048,
     messages: [
       {
         role: 'user',
-        content: `You are an expert music analyst. Extract structured information from this playlist request.
+        content: `You are an expert DJ and music analyst. Extract structured information from this playlist request.
+
+DJ LINGO MAPPINGS (apply these automatically):
+- "peak time" / "prime time" / "main room" → energyRange: {min: 8, max: 10}
+- "warm up" / "opening set" → energyRange: {min: 4, max: 6}, energyCurve: "ascending"
+- "closing set" / "cool down" → energyCurve: "descending", energyRange: {min: 5, max: 7}
+- "sunrise set" / "after hours" → timeOfDay: "late-night", moods: ["hypnotic", "deep"]
+- "sunset session" / "golden hour" → timeOfDay: "evening", moods: ["melodic", "uplifting"]
+- "Boiler Room style" / "underground" → moods: ["underground", "raw"], energyRange: {min: 6, max: 9}
+- "festival banger" / "mainstage" → energyRange: {min: 9, max: 10}, moods: ["euphoric", "big-room"]
+- "Ibiza vibes" / "beach club" → moods: ["summery", "melodic"], genres: ["house", "tech-house"]
+- "Berlin techno" / "warehouse" → genres: ["techno"], moods: ["dark", "industrial"]
+- "driving" / "motorik" → bpmRange: {min: 125, max: 135}, moods: ["hypnotic", "relentless"]
+
+GENRE BPM DEFAULTS (use if no explicit BPM given):
+- techno: 130-145
+- tech-house: 124-130
+- house: 118-128
+- deep house: 118-124
+- progressive house: 126-132
+- trance: 138-145
+- drum & bass / dnb: 170-180
+- downtempo: 90-110
 
 User's request: "${prompt}"
 
@@ -81,9 +106,10 @@ Analyze and extract:
     - MOODY: introspective, late-night, melancholic, atmospheric, contemplative, dark
 13. Activity context (workout, study, party, chill, etc.)
 14. Time of day if mentioned
-15. Era preferences (decades)
+15. Era preferences (decades like "80s", "90s", "2000s", "2010s", "modern" → "2020s")
 16. Specific tracks to include
-17. Artists to exclude
+17. Artists to EXCLUDE (look for: "no X", "exclude X", "without X", "skip X", "not X")
+18. Track familiarity: "deep cuts" / "hidden gems" / "obscure" → "deep-cuts", "hits only" / "bangers" / "crowd pleasers" → "hits", default → "mixed"
 
 Examples:
 - "Mix with Daft Punk and Justice" → artists: ["Daft Punk", "Justice"]
@@ -97,6 +123,11 @@ Examples:
 - "Use this playlist as reference: https://open.spotify.com/playlist/xyz" → seedPlaylistUrl: "https://..."
 - "Beatport tech house chart" → beatportGenre: "tech-house", useBeatportChart: true
 - "Trending techno on Beatport" → beatportGenre: "techno", useBeatportChart: true
+- "90s house", "classic 90s" → eraPreferences: ["1990s"], genres: ["house"]
+- "modern techno" → eraPreferences: ["2020s"], genres: ["techno"]
+- "no Drake", "exclude pop", "without mainstream" → excludeArtists: ["Drake"] or genres exclude
+- "deep cuts only", "hidden gems" → familiarityPreference: "deep-cuts"
+- "hits", "crowd pleasers", "bangers" → familiarityPreference: "hits"
 
 Respond with ONLY a JSON object, no other text:
 {
@@ -117,7 +148,8 @@ Respond with ONLY a JSON object, no other text:
   "timeOfDay": "morning",
   "eraPreferences": ["2010s", "2020s"],
   "excludeArtists": ["Artist Name"],
-  "mustIncludeTracks": ["Track - Artist"]
+  "mustIncludeTracks": ["Track - Artist"],
+  "familiarityPreference": "mixed"
 }
 
 Only include fields that are clearly specified. Use null for unspecified fields.`,

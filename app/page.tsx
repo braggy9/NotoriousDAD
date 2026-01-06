@@ -1,13 +1,46 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+
+type TabType = 'playlist' | 'mix';
+
+interface MixResult {
+  success: boolean;
+  mixName?: string;
+  mixUrl?: string;
+  tracklist?: Array<{
+    position: number;
+    artist: string;
+    title: string;
+    bpm?: number;
+    key?: string;
+    energy?: number;
+  }>;
+  duration?: number;
+  transitionCount?: number;
+  harmonicPercentage?: number;
+  error?: string;
+}
+
+interface AvailableMix {
+  filename: string;
+  name: string;
+  sizeFormatted: string;
+  durationFormatted: string;
+  createdAt: string;
+  downloadUrl: string;
+}
 
 function HomeContent() {
   const searchParams = useSearchParams();
   const isLoggedIn = searchParams.get('success') === 'true';
+  const [activeTab, setActiveTab] = useState<TabType>('playlist');
   const [prompt, setPrompt] = useState('');
+  const [mixPrompt, setMixPrompt] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mixLoading, setMixLoading] = useState(false);
+  const [availableMixes, setAvailableMixes] = useState<AvailableMix[]>([]);
   const [result, setResult] = useState<{
     playlistUrl?: string;
     playlistName?: string;
@@ -18,6 +51,26 @@ function HomeContent() {
     quality?: any;
     tracks?: any[];
   } | null>(null);
+  const [mixResult, setMixResult] = useState<MixResult | null>(null);
+
+  // Load available mixes on mount
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchAvailableMixes();
+    }
+  }, [isLoggedIn]);
+
+  const fetchAvailableMixes = async () => {
+    try {
+      const response = await fetch('/api/list-mixes');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableMixes(data.mixes || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch mixes:', error);
+    }
+  };
 
   const handleGeneratePlaylist = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,16 +87,9 @@ function HomeContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Show detailed error information
         const errorMessage = data.error || 'Failed to generate playlist';
         const details = data.details ? `\n\nDetails: ${data.details}` : '';
-        const status = data.status ? `\n\nHTTP Status: ${data.status}` : '';
-        const hint = data.hint ? `\n\nHint: ${data.hint}` : '';
-        const debugInfo = data.debug ? `\n\nDebug: ${JSON.stringify(data.debug)}` : '';
-
-        setResult({
-          error: errorMessage + details + status + hint + debugInfo
-        });
+        setResult({ error: errorMessage + details });
       } else {
         setResult(data);
       }
@@ -51,6 +97,34 @@ function HomeContent() {
       setResult({ error: 'An error occurred while generating the playlist' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateMix = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMixLoading(true);
+    setMixResult(null);
+
+    try {
+      const response = await fetch('/api/generate-mix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: mixPrompt }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMixResult({ success: false, error: data.error || 'Failed to generate mix' });
+      } else {
+        setMixResult(data);
+        // Refresh available mixes
+        fetchAvailableMixes();
+      }
+    } catch (error) {
+      setMixResult({ success: false, error: 'An error occurred while generating the mix' });
+    } finally {
+      setMixLoading(false);
     }
   };
 
@@ -78,7 +152,6 @@ function HomeContent() {
             description: result.constraints,
             harmonicMixPercentage: result.quality?.harmonicMixPercentage,
             avgTransitionScore: result.quality?.avgTransitionScore,
-            constraints: result.constraints,
           },
         }),
       });
@@ -101,6 +174,13 @@ function HomeContent() {
     }
   };
 
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return '';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   if (!isLoggedIn) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24">
@@ -109,7 +189,7 @@ function HomeContent() {
             🎧 AI DJ Mix Generator
           </h1>
           <p className="text-lg sm:text-xl text-gray-600 mb-8">
-            Generate intelligent playlists from natural language
+            Generate intelligent playlists and audio mixes from natural language
           </p>
           <a
             href="/api/auth"
@@ -123,11 +203,12 @@ function HomeContent() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 md:p-16 lg:p-24">
+    <main className="flex min-h-screen flex-col items-center justify-start p-4 sm:p-8 md:p-16 lg:p-24">
       <div className="w-full max-w-2xl">
+        {/* Header */}
         <div className="flex justify-between items-start mb-2">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-center flex-1">
-            🎧 AI DJ Mix Generator
+            🎧 Notorious DAD
           </h1>
           <button
             onClick={handleLogout}
@@ -136,164 +217,248 @@ function HomeContent() {
             Logout
           </button>
         </div>
-        <p className="text-sm sm:text-base md:text-lg text-gray-600 mb-4 text-center px-2">
-          🤖 2-Pass AI Curation • Harmonic Mixing • Personalized • djay Pro Optimized
+        <p className="text-sm sm:text-base text-gray-600 mb-6 text-center">
+          AI-Powered DJ Mix Generator
         </p>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-6 sm:mb-8">
-          <p className="text-xs sm:text-sm font-semibold text-blue-900 mb-3">✨ How to Prompt:</p>
 
-          <div className="space-y-3 text-xs sm:text-sm text-blue-800">
-            <div>
-              <p className="font-semibold mb-1">🎵 Artists:</p>
-              <p className="ml-3">• <strong>Include</strong>: "Mix with Daft Punk and Justice" (must have these artists)</p>
-              <p className="ml-3">• <strong>Reference</strong>: "Similar to Radiohead" (use as style guide, not required)</p>
-            </div>
-
-            <div>
-              <p className="font-semibold mb-1">😎 Vibes & Moods:</p>
-              <p className="ml-3">• <strong>Chilled</strong>: relaxing, afternoon coffee, wind down, sunset drinks</p>
-              <p className="ml-3">• <strong>Energetic</strong>: workout, party, pre-game, pump-up</p>
-              <p className="ml-3">• <strong>Focused</strong>: study, deep work, coding, concentration</p>
-              <p className="ml-3">• <strong>Social</strong>: dinner party, drinks with friends, background vibes</p>
-              <p className="ml-3">• <strong>Moody</strong>: introspective, late-night, melancholic, atmospheric</p>
-            </div>
-
-            <div>
-              <p className="font-semibold mb-1">🎛️ Other Options:</p>
-              <p className="ml-3">• <strong>Beatport charts</strong>: "Beatport tech house top 10"</p>
-              <p className="ml-3">• <strong>Seed playlists</strong>: Paste any Spotify playlist URL</p>
-              <p className="ml-3">• <strong>BPM/Energy</strong>: Specify ranges (e.g., "120-128 BPM, energy 7-9/10")</p>
-              <p className="ml-3">• <strong>Energy curves</strong>: ascending, descending, wave, peak-middle, peak-end</p>
-            </div>
-          </div>
+        {/* Tab Navigation */}
+        <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setActiveTab('playlist')}
+            className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+              activeTab === 'playlist'
+                ? 'bg-white text-green-600 shadow'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            📋 Spotify Playlist
+          </button>
+          <button
+            onClick={() => setActiveTab('mix')}
+            className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+              activeTab === 'mix'
+                ? 'bg-white text-purple-600 shadow'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            🎛️ Audio Mix
+          </button>
         </div>
 
-        <form onSubmit={handleGeneratePlaylist} className="mb-4 sm:mb-6">
-          <div className="mb-4">
-            <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
-              Describe your playlist
-            </label>
-            <textarea
-              id="prompt"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Example: 'Chilled sunset drinks vibe, similar to Bonobo and Tycho, 90-110 BPM, relaxing afternoon coffee mood' or 'Energetic workout mix with Daft Punk and Justice, 128-135 BPM, ascending energy, pump-up party vibes'"
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none touch-manipulation"
-              rows={4}
-              required
-            />
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setPrompt('Beatport tech house chart, 126-130 BPM, peak-middle energy')}
-                className="text-xs sm:text-sm px-3 py-1.5 sm:py-2 bg-purple-100 hover:bg-purple-200 active:bg-purple-300 text-purple-900 rounded-full transition-colors touch-manipulation font-medium"
-              >
-                📊 Beatport
-              </button>
-              <button
-                type="button"
-                onClick={() => setPrompt('Chilled vibe, similar to Bonobo and Tycho, relaxing afternoon coffee mood, 95-110 BPM')}
-                className="text-xs sm:text-sm px-3 py-1.5 sm:py-2 bg-blue-100 hover:bg-blue-200 active:bg-blue-300 text-blue-900 rounded-full transition-colors touch-manipulation"
-              >
-                😎 Chilled (Reference)
-              </button>
-              <button
-                type="button"
-                onClick={() => setPrompt('Energetic workout mix with Daft Punk and Justice, pump-up party vibes, 128-135 BPM, ascending energy')}
-                className="text-xs sm:text-sm px-3 py-1.5 sm:py-2 bg-orange-100 hover:bg-orange-200 active:bg-orange-300 text-orange-900 rounded-full transition-colors touch-manipulation"
-              >
-                🔥 Energetic (Include)
-              </button>
-              <button
-                type="button"
-                onClick={() => setPrompt('Focused deep work, similar to Jon Hopkins and Nils Frahm, concentration and coding mood, 110-125 BPM')}
-                className="text-xs sm:text-sm px-3 py-1.5 sm:py-2 bg-green-100 hover:bg-green-200 active:bg-green-300 text-green-900 rounded-full transition-colors touch-manipulation"
-              >
-                🎯 Focused
-              </button>
-              <button
-                type="button"
-                onClick={() => setPrompt('Social dinner party, background vibes with drinks with friends mood, 100-115 BPM, wave energy')}
-                className="text-xs sm:text-sm px-3 py-1.5 sm:py-2 bg-pink-100 hover:bg-pink-200 active:bg-pink-300 text-pink-900 rounded-full transition-colors touch-manipulation"
-              >
-                🍷 Social
-              </button>
+        {/* Playlist Tab */}
+        {activeTab === 'playlist' && (
+          <div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-6">
+              <p className="text-xs sm:text-sm font-semibold text-blue-900 mb-2">
+                Creates a Spotify playlist from your library with harmonic mixing
+              </p>
+              <p className="text-xs text-blue-700">
+                Use "Include: artist" for must-have artists, "Reference: artist" for style guide
+              </p>
             </div>
-            <p className="mt-3 text-xs sm:text-sm text-gray-500">
-              💡 <strong>Tip:</strong> Use "with [artists]" to include them, "similar to [artists]" to use as reference!
-            </p>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading || !prompt.trim()}
-            className="w-full bg-green-600 hover:bg-green-700 active:bg-green-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base rounded-lg transition-colors touch-manipulation"
-          >
-            {loading ? 'Generating...' : 'Generate Playlist'}
-          </button>
-        </form>
-
-        {result && (
-          <div className={`p-4 sm:p-6 rounded-lg ${result.error ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-            {result.error ? (
-              <div>
-                <p className="font-bold mb-2">❌ Error:</p>
-                <pre className="text-xs sm:text-sm whitespace-pre-wrap font-mono bg-red-50 p-3 rounded border border-red-300 overflow-x-auto">
-                  {result.error}
-                </pre>
+            <form onSubmit={handleGeneratePlaylist} className="mb-4">
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Example: 'Chilled sunset drinks vibe, similar to Bonobo and Tycho, 90-110 BPM'"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                rows={3}
+                required
+              />
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPrompt('Chilled vibe, similar to Bonobo and Tycho, 95-110 BPM')}
+                  className="text-xs px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-900 rounded-full"
+                >
+                  😎 Chilled
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrompt('Energetic workout with Daft Punk, 128-135 BPM, ascending energy')}
+                  className="text-xs px-3 py-1.5 bg-orange-100 hover:bg-orange-200 text-orange-900 rounded-full"
+                >
+                  🔥 Energetic
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrompt('Deep house sunset, 118-124 BPM, wave energy')}
+                  className="text-xs px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-full"
+                >
+                  🌅 Sunset
+                </button>
               </div>
-            ) : (
-              <div>
-                <p className="font-bold mb-3 text-base sm:text-lg">{result.message || '✓ Playlist created successfully!'}</p>
-                {result.trackCount && (
-                  <div className="mb-3 text-xs sm:text-sm space-y-1">
-                    <p>📊 {result.trackCount} tracks selected</p>
-                    {result.constraints && <p className="break-words">🎯 {result.constraints}</p>}
+              <button
+                type="submit"
+                disabled={loading || !prompt.trim()}
+                className="w-full mt-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+              >
+                {loading ? 'Generating...' : 'Generate Spotify Playlist'}
+              </button>
+            </form>
+
+            {result && (
+              <div className={`p-4 rounded-lg ${result.error ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                {result.error ? (
+                  <pre className="text-xs whitespace-pre-wrap">{result.error}</pre>
+                ) : (
+                  <div>
+                    <p className="font-bold mb-2">{result.message}</p>
+                    {result.trackCount && <p className="text-sm">📊 {result.trackCount} tracks</p>}
                     {result.quality && (
-                      <p>🎵 {result.quality.harmonicMixPercentage}% harmonic • {result.quality.avgTransitionScore}/100 quality</p>
+                      <p className="text-sm">🎵 {result.quality.harmonicMixPercentage}% harmonic</p>
+                    )}
+                    <a
+                      href={result.playlistUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-3 bg-green-600 text-white px-4 py-2 rounded-lg text-sm"
+                    >
+                      🎧 Open in Spotify
+                    </a>
+                    {result.tracks && (
+                      <div className="mt-3 pt-3 border-t border-green-300">
+                        <p className="text-xs font-semibold mb-2">📥 Export:</p>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleExport('m3u8')} className="text-xs bg-white px-3 py-1 rounded border">M3U8</button>
+                          <button onClick={() => handleExport('json')} className="text-xs bg-white px-3 py-1 rounded border">JSON</button>
+                          <button onClick={() => handleExport('csv')} className="text-xs bg-white px-3 py-1 rounded border">CSV</button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+        )}
 
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
-                  <a
-                    href={result.playlistUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block text-center bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold px-6 py-3 rounded-lg transition-colors touch-manipulation"
-                  >
-                    🎧 Open in Spotify
-                  </a>
+        {/* Audio Mix Tab */}
+        {activeTab === 'mix' && (
+          <div>
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 sm:p-4 mb-6">
+              <p className="text-xs sm:text-sm font-semibold text-purple-900 mb-2">
+                Creates a real audio mix file with crossfades and harmonic transitions
+              </p>
+              <p className="text-xs text-purple-700">
+                Uses your local DJ library with MIK analysis data
+              </p>
+            </div>
+
+            <form onSubmit={handleGenerateMix} className="mb-4">
+              <textarea
+                value={mixPrompt}
+                onChange={(e) => setMixPrompt(e.target.value)}
+                placeholder="Example: 'Tech house mix, 6 tracks, 125 BPM, building energy'"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                rows={3}
+                required
+              />
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMixPrompt('Tech house mix, 6 tracks, 125 BPM, building energy')}
+                  className="text-xs px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-full"
+                >
+                  🏠 Tech House
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMixPrompt('Deep house sunset, 6 tracks, 120 BPM, chill vibes')}
+                  className="text-xs px-3 py-1.5 bg-pink-100 hover:bg-pink-200 text-pink-900 rounded-full"
+                >
+                  🌅 Sunset Session
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMixPrompt('High energy mix, 8 tracks, 128-135 BPM, peak time')}
+                  className="text-xs px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-900 rounded-full"
+                >
+                  ⚡ Peak Time
+                </button>
+              </div>
+              <button
+                type="submit"
+                disabled={mixLoading || !mixPrompt.trim()}
+                className="w-full mt-4 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+              >
+                {mixLoading ? 'Generating Mix...' : 'Generate Audio Mix'}
+              </button>
+            </form>
+
+            {mixLoading && (
+              <div className="bg-purple-50 p-4 rounded-lg mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
+                  <p className="text-purple-700 text-sm">
+                    Generating mix... This may take a few minutes
+                  </p>
                 </div>
+              </div>
+            )}
 
-                {result.tracks && (
-                  <div className="border-t border-green-300 pt-4 mt-4">
-                    <p className="text-xs sm:text-sm font-semibold mb-3">📥 Export for djay Pro:</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <button
-                        onClick={() => handleExport('m3u8')}
-                        className="bg-white hover:bg-green-50 active:bg-green-100 text-green-700 font-medium px-4 py-3 rounded border border-green-300 transition-colors text-xs sm:text-sm touch-manipulation"
-                      >
-                        📄 M3U8 (Recommended)
-                      </button>
-                      <button
-                        onClick={() => handleExport('json')}
-                        className="bg-white hover:bg-green-50 active:bg-green-100 text-green-700 font-medium px-4 py-3 rounded border border-green-300 transition-colors text-xs sm:text-sm touch-manipulation"
-                      >
-                        🔧 JSON
-                      </button>
-                      <button
-                        onClick={() => handleExport('csv')}
-                        className="bg-white hover:bg-green-50 active:bg-green-100 text-green-700 font-medium px-4 py-3 rounded border border-green-300 transition-colors text-xs sm:text-sm touch-manipulation"
-                      >
-                        📊 CSV
-                      </button>
+            {mixResult && (
+              <div className={`p-4 rounded-lg mb-4 ${mixResult.error ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'}`}>
+                {mixResult.error ? (
+                  <pre className="text-xs whitespace-pre-wrap">{mixResult.error}</pre>
+                ) : (
+                  <div>
+                    <p className="font-bold mb-2">🎉 {mixResult.mixName}</p>
+                    <div className="text-sm space-y-1 mb-3">
+                      <p>⏱️ Duration: {formatDuration(mixResult.duration)}</p>
+                      <p>🔗 Transitions: {mixResult.transitionCount}</p>
+                      <p>🎹 Harmonic: {mixResult.harmonicPercentage}%</p>
                     </div>
-                    <p className="text-xs text-green-800 mt-3">
-                      💡 Import M3U8 to djay Pro: File → Import Playlist → Select file
-                    </p>
+                    {mixResult.tracklist && (
+                      <div className="bg-white/50 rounded p-2 mb-3">
+                        <p className="text-xs font-semibold mb-1">Tracklist:</p>
+                        {mixResult.tracklist.map((track, i) => (
+                          <p key={i} className="text-xs">
+                            {track.position}. {track.artist} - {track.title}
+                            <span className="text-purple-500 ml-1">
+                              ({track.bpm} BPM, {track.key})
+                            </span>
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                    <a
+                      href={mixResult.mixUrl}
+                      className="inline-block bg-purple-600 text-white px-4 py-2 rounded-lg text-sm"
+                    >
+                      📥 Download Mix
+                    </a>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Available Mixes */}
+            {availableMixes.length > 0 && (
+              <div className="border-t pt-4 mt-4">
+                <p className="font-semibold text-gray-700 mb-3">📁 Previous Mixes</p>
+                <div className="space-y-2">
+                  {availableMixes.slice(0, 5).map((mix, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between bg-gray-50 rounded-lg p-3"
+                    >
+                      <div>
+                        <p className="font-medium text-sm">{mix.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {mix.durationFormatted} • {mix.sizeFormatted}
+                        </p>
+                      </div>
+                      <a
+                        href={mix.downloadUrl}
+                        className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+                      >
+                        Download
+                      </a>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -306,10 +471,10 @@ function HomeContent() {
 export default function Home() {
   return (
     <Suspense fallback={
-      <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-12 md:p-24">
+      <main className="flex min-h-screen flex-col items-center justify-center p-6">
         <div className="text-center">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4">🎧 AI DJ Mix Generator</h1>
-          <p className="text-lg sm:text-xl text-gray-600">Loading...</p>
+          <h1 className="text-4xl font-bold mb-4">🎧 Notorious DAD</h1>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </main>
     }>

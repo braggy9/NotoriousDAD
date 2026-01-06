@@ -5,12 +5,14 @@ import NotoriousDADKit
 struct NotoriousDADApp: App {
     @StateObject private var spotifyManager = SpotifyManager()
     @StateObject private var libraryManager = LibraryManager()
+    @StateObject private var notificationManager = NotificationManager.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(spotifyManager)
                 .environmentObject(libraryManager)
+                .environmentObject(notificationManager)
                 .onOpenURL { url in
                     // Handle Spotify OAuth callback
                     if url.scheme == "notoriousdad" {
@@ -22,6 +24,9 @@ struct NotoriousDADApp: App {
                     if !spotifyManager.isAuthenticated {
                         await spotifyManager.loadTokensFromWebApp()
                     }
+
+                    // Request notification permissions
+                    await notificationManager.requestAuthorization()
                 }
         }
     }

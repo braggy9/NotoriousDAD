@@ -1,0 +1,332 @@
+/**
+ * Mix Recipe Export System
+ *
+ * Generates exportable mix recipes in various formats:
+ * - JSON (for programmatic use)
+ * - Markdown (human-readable)
+ * - Rekordbox XML (future)
+ * - Serato Crate (future)
+ */
+
+import { PlaylistTrack } from './types';
+import {
+  TransitionMetadata,
+  generatePlaylistTransitions,
+  calculateMixDifficulty,
+  generateMixNotes,
+} from './transition-analyzer';
+
+// Full mix recipe structure
+export interface MixRecipe {
+  // Metadata
+  id: string;
+  name: string;
+  createdAt: string;
+  totalDuration: number; // minutes
+  trackCount: number;
+
+  // Quality metrics
+  difficulty: 'easy' | 'medium' | 'hard';
+  harmonicMixPercentage: number;
+  avgTransitionScore: number;
+
+  // BPM range
+  bpmRange: {
+    min: number;
+    max: number;
+    avg: number;
+  };
+
+  // Energy curve
+  energyCurve: number[]; // 0-1 values for each track
+
+  // Tracks with position data
+  tracks: MixRecipeTrack[];
+
+  // Transition recommendations
+  transitions: TransitionMetadata[];
+}
+
+export interface MixRecipeTrack {
+  position: number;
+  id: string;
+  name: string;
+  artist: string;
+  album: string;
+  duration: number; // seconds
+
+  // DJ data
+  bpm: number;
+  key: string; // Camelot notation
+  energy: number; // 0-1
+
+  // Mix points (seconds into track)
+  cuePoints: {
+    mixIn: number;   // When this track should become audible
+    mixOut: number;  // When to start fading out
+    drop?: number;   // Main drop point
+    breakdown?: number; // Breakdown section
+  };
+
+  // Spotify/streaming data
+  spotifyUri?: string;
+  previewUrl?: string;
+  albumArt?: string;
+}
+
+/**
+ * Generate a complete mix recipe from a playlist
+ */
+export function generateMixRecipe(
+  tracks: PlaylistTrack[],
+  playlistName: string,
+  playlistId: string,
+  harmonicMixPercentage: number = 0,
+  avgTransitionScore: number = 0
+): MixRecipe {
+  // Generate transitions
+  const transitions = generatePlaylistTransitions(tracks);
+  const difficultyInfo = calculateMixDifficulty(transitions);
+
+  // Calculate BPM stats
+  const bpms = tracks
+    .map(t => t.tempo || t.mikData?.bpm)
+    .filter((bpm): bpm is number => bpm !== undefined && bpm > 0);
+
+  const bpmRange = {
+    min: Math.min(...bpms),
+    max: Math.max(...bpms),
+    avg: Math.round(bpms.reduce((a, b) => a + b, 0) / bpms.length),
+  };
+
+  // Build energy curve
+  const energyCurve = tracks.map(t => t.energy || 0.5);
+
+  // Calculate total duration
+  const totalDuration = tracks.reduce((sum, t) => {
+    const duration = t.duration_ms || 210000;
+    return sum + duration;
+  }, 0) / 60000; // Convert to minutes
+
+  // Build track list with cue points
+  const mixRecipeTracks: MixRecipeTrack[] = tracks.map((track, index) => {
+    const duration = (track.duration_ms || 210000) / 1000; // seconds
+    const bpm = track.tempo || track.mikData?.bpm || 120;
+    const key = track.camelotKey || track.mikData?.camelotKey || '0A';
+    const energy = track.energy || 0.5;
+
+    // Calculate cue points based on transition metadata
+    const transition = index < transitions.length ? transitions[index] : null;
+    const prevTransition = index > 0 ? transitions[index - 1] : null;
+
+    // Mix in point from previous transition
+    const mixInPercent = prevTransition?.mixInPoint || 0;
+    const mixIn = (mixInPercent / 100) * duration;
+
+    // Mix out point from this transition
+    const mixOutPercent = transition?.mixOutPoint || 90;
+    const mixOut = (mixOutPercent / 100) * duration;
+
+    // Estimate drop and breakdown (electronic music typical structure)
+    const drop = duration * 0.25; // ~25% in
+    const breakdown = duration * 0.5; // ~50% in
+
+    return {
+      position: index + 1,
+      id: track.id,
+      name: track.name,
+      artist: track.artists?.[0]?.name || 'Unknown',
+      album: track.album?.name || 'Unknown',
+      duration: Math.round(duration),
+      bpm,
+      key,
+      energy,
+      cuePoints: {
+        mixIn: Math.round(mixIn),
+        mixOut: Math.round(mixOut),
+        drop: Math.round(drop),
+        breakdown: Math.round(breakdown),
+      },
+      spotifyUri: track.uri,
+      previewUrl: (track as any).preview_url,
+      albumArt: (track.album as any)?.images?.[0]?.url,
+    };
+  });
+
+  return {
+    id: playlistId,
+    name: playlistName,
+    createdAt: new Date().toISOString(),
+    totalDuration: Math.round(totalDuration),
+    trackCount: tracks.length,
+    difficulty: difficultyInfo.overall,
+    harmonicMixPercentage,
+    avgTransitionScore,
+    bpmRange,
+    energyCurve,
+    tracks: mixRecipeTracks,
+    transitions,
+  };
+}
+
+/**
+ * Export mix recipe as JSON
+ */
+export function exportMixRecipeJSON(recipe: MixRecipe): string {
+  return JSON.stringify(recipe, null, 2);
+}
+
+/**
+ * Export mix recipe as Markdown
+ */
+export function exportMixRecipeMarkdown(recipe: MixRecipe): string {
+  const lines: string[] = [];
+
+  // Header
+  lines.push(`# 🎧 ${recipe.name}`);
+  lines.push('');
+  lines.push(`**Mix Recipe** | Generated by Notorious D.A.D.`);
+  lines.push('');
+
+  // Stats
+  lines.push('## 📊 Mix Stats');
+  lines.push('');
+  lines.push(`| Metric | Value |`);
+  lines.push(`|--------|-------|`);
+  lines.push(`| Tracks | ${recipe.trackCount} |`);
+  lines.push(`| Duration | ${recipe.totalDuration} min |`);
+  lines.push(`| Difficulty | ${recipe.difficulty.toUpperCase()} |`);
+  lines.push(`| Harmonic Mix | ${recipe.harmonicMixPercentage}% |`);
+  lines.push(`| BPM Range | ${recipe.bpmRange.min}-${recipe.bpmRange.max} (avg ${recipe.bpmRange.avg}) |`);
+  lines.push('');
+
+  // Track list with transitions
+  lines.push('## 🎵 Tracklist');
+  lines.push('');
+
+  for (let i = 0; i < recipe.tracks.length; i++) {
+    const track = recipe.tracks[i];
+    const transition = i < recipe.transitions.length ? recipe.transitions[i] : null;
+
+    // Track info
+    lines.push(`### ${track.position}. ${track.name}`);
+    lines.push(`**${track.artist}** | ${track.bpm} BPM | ${track.key} | Energy: ${(track.energy * 10).toFixed(0)}/10`);
+    lines.push('');
+
+    // Cue points
+    lines.push(`- Mix IN: ${formatTime(track.cuePoints.mixIn)}`);
+    lines.push(`- Mix OUT: ${formatTime(track.cuePoints.mixOut)}`);
+    if (track.cuePoints.drop) {
+      lines.push(`- Drop: ${formatTime(track.cuePoints.drop)}`);
+    }
+    lines.push('');
+
+    // Transition
+    if (transition) {
+      const nextTrack = recipe.tracks[i + 1];
+      lines.push(`#### ⏭️ Transition → ${nextTrack?.name || 'End'}`);
+      lines.push('');
+      lines.push(`| | |`);
+      lines.push(`|---|---|`);
+      lines.push(`| Type | **${formatTransitionType(transition.transitionType)}** |`);
+      lines.push(`| Length | ${transition.transitionLength} bars |`);
+      lines.push(`| Difficulty | ${transition.difficulty} |`);
+
+      if (transition.bpmAdjustment !== 0) {
+        lines.push(`| BPM Adjust | ${transition.bpmAdjustment > 0 ? '+' : ''}${transition.bpmAdjustment}% |`);
+      }
+      if (transition.outgoingEffect !== 'none') {
+        lines.push(`| Out Effect | ${formatEffect(transition.outgoingEffect)} |`);
+      }
+      if (transition.incomingEffect !== 'none') {
+        lines.push(`| In Effect | ${formatEffect(transition.incomingEffect)} |`);
+      }
+
+      lines.push('');
+      lines.push(`> 💡 ${transition.notes}`);
+
+      if (transition.warnings.length > 0) {
+        lines.push('');
+        lines.push(`> ⚠️ **Warning:** ${transition.warnings.join(', ')}`);
+      }
+
+      lines.push('');
+    }
+
+    lines.push('---');
+    lines.push('');
+  }
+
+  // Footer
+  lines.push('');
+  lines.push('*Generated by Notorious D.A.D. - AI-Powered DJ Mix Generator*');
+
+  return lines.join('\n');
+}
+
+/**
+ * Export simplified cue sheet (for quick reference while DJing)
+ */
+export function exportCueSheet(recipe: MixRecipe): string {
+  const lines: string[] = [];
+
+  lines.push(`CUE SHEET: ${recipe.name}`);
+  lines.push(`${recipe.trackCount} tracks | ${recipe.totalDuration} min | ${recipe.bpmRange.min}-${recipe.bpmRange.max} BPM`);
+  lines.push('='.repeat(60));
+  lines.push('');
+
+  for (let i = 0; i < recipe.tracks.length; i++) {
+    const track = recipe.tracks[i];
+    const transition = i < recipe.transitions.length ? recipe.transitions[i] : null;
+
+    // Compact track line
+    const bpmStr = track.bpm.toString().padStart(3);
+    const keyStr = track.key.padEnd(3);
+    lines.push(`${String(i + 1).padStart(2)}. [${bpmStr}][${keyStr}] ${track.artist} - ${track.name}`);
+
+    // Transition line
+    if (transition) {
+      const typeShort = getTransitionShorthand(transition.transitionType);
+      const diffIcon = transition.difficulty === 'easy' ? '✓' : transition.difficulty === 'medium' ? '~' : '!';
+      lines.push(`    └─ ${diffIcon} ${typeShort} (${transition.transitionLength} bars) @ ${track.cuePoints.mixOut}s`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+// Helper functions
+function formatTime(seconds: number): string {
+  const min = Math.floor(seconds / 60);
+  const sec = Math.round(seconds % 60);
+  return `${min}:${sec.toString().padStart(2, '0')}`;
+}
+
+function formatTransitionType(type: string): string {
+  return type
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function formatEffect(effect: string): string {
+  return effect
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function getTransitionShorthand(type: string): string {
+  const map: Record<string, string> = {
+    'long-blend': 'BLEND-L',
+    'short-blend': 'BLEND-S',
+    'cut': 'CUT',
+    'echo-out': 'ECHO',
+    'filter-sweep': 'FILTER',
+    'breakdown-drop': 'DROP',
+    'backspin': 'SPIN',
+    'double-drop': 'DBL-DROP',
+    'acapella-intro': 'ACAP',
+  };
+  return map[type] || type.toUpperCase();
+}

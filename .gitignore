@@ -60,3 +60,5 @@ logs/
 
 # API keys backup (ask Claude if needed)
 .env.keys
+.digitalocean-token
+.do-server-password

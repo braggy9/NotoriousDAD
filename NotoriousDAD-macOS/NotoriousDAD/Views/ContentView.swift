@@ -12,6 +12,7 @@ struct ContentView: View {
 
     enum Tab: String, CaseIterable {
         case generate = "Generate"
+        case mix = "Audio Mix"
         case library = "Library"
         case playlists = "Playlists"
     }
@@ -65,6 +66,8 @@ struct ContentView: View {
             switch selectedTab {
             case .generate:
                 GenerateView(showingNewPlaylist: $showingNewPlaylist)
+            case .mix:
+                MixGeneratorView()
             case .library:
                 LibraryView()
             case .playlists:
@@ -82,6 +85,7 @@ struct ContentView: View {
     private func iconForTab(_ tab: Tab) -> String {
         switch tab {
         case .generate: return "wand.and.stars"
+        case .mix: return "waveform.path.ecg"
         case .library: return "music.note.list"
         case .playlists: return "list.bullet.rectangle"
         }
@@ -103,6 +107,7 @@ struct GenerateView: View {
     @State private var bpmMin = ""
     @State private var bpmMax = ""
     @State private var selectedEnergy: MacEnergyPreset = .build
+    @State private var advancedNotes = "" // Free-text for advanced NLP options
 
     // UI State
     @State private var isGenerating = false
@@ -111,7 +116,7 @@ struct GenerateView: View {
     @State private var showingSuccess = false
 
     var body: some View {
-        HSplitView {
+        HStack(spacing: 0) {
             // Left Panel - Form
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -233,6 +238,21 @@ struct GenerateView: View {
                         Label("Settings", systemImage: "slider.horizontal.3")
                     }
 
+                    // MARK: - Notes Section (Optional)
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField("e.g. 90s house, deep cuts, exclude Drake", text: $advancedNotes, axis: .vertical)
+                                .textFieldStyle(.roundedBorder)
+                                .lineLimit(2...4)
+                            Text("Add extra instructions: era, exclude artists, deep cuts vs hits")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 8)
+                    } label: {
+                        Label("Notes (Optional)", systemImage: "text.bubble")
+                    }
+
                     // MARK: - Generate Button
                     Button(action: generatePlaylist) {
                         HStack(spacing: 12) {
@@ -274,9 +294,12 @@ struct GenerateView: View {
                     .background(.quaternary.opacity(0.5))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(24)
             }
-            .frame(minWidth: 400, idealWidth: 500)
+            .frame(maxWidth: .infinity)
+
+            Divider()
 
             // Right Panel - Preview
             VStack(spacing: 0) {
@@ -320,8 +343,9 @@ struct GenerateView: View {
                     )
                 }
             }
-            .frame(minWidth: 300)
+            .frame(width: 350)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .alert("Playlist Created!", isPresented: $showingSuccess) {
             if let url = generatedPlaylistURL {
                 Button("Open in Spotify") {
@@ -361,6 +385,11 @@ struct GenerateView: View {
             parts.append("BPM: \(min)-\(max)")
         }
 
+        // Add free-text notes at the end (parsed by NLP)
+        if !advancedNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append(advancedNotes.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+
         return parts.joined(separator: ". ")
     }
 
@@ -394,10 +423,12 @@ struct GenerateView: View {
         selectedMood = nil
         bpmMin = ""
         bpmMax = ""
+        advancedNotes = ""
     }
 
     private func callGeneratePlaylistAPI(prompt: String) async throws -> String {
-        guard let url = URL(string: "https://dj-mix-generator.vercel.app/api/generate-playlist") else {
+        // Use cloud server with HTTPS
+        guard let url = URL(string: "https://mixmaster.mixtape.run/api/generate-playlist") else {
             throw MacGenerationError.invalidURL
         }
 
@@ -627,6 +658,637 @@ struct PlaylistPreview: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Mix Generator View
+
+struct MixGeneratorView: View {
+    @EnvironmentObject var libraryManager: LibraryManager
+    @EnvironmentObject var notificationManager: NotificationManager
+
+    // Form Fields
+    @State private var mixPrompt = ""
+    @State private var selectedDuration: MixDuration = .short
+    @State private var selectedStyle: MixStyle?
+
+    // UI State
+    @State private var isGenerating = false
+    @State private var generationProgress = ""
+    @State private var generationError: String?
+    @State private var generatedMix: GeneratedMix?
+    @State private var previousMixes: [PreviousMix] = []
+
+    var body: some View {
+        HSplitView {
+            // Left Panel - Form
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Header
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("Audio Mix Generator")
+                                .font(.largeTitle.bold())
+                            Text("Create beatmatched, harmonically-mixed audio files")
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.bottom, 8)
+
+                    // MARK: - Prompt Input
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 12) {
+                            TextField("Describe your mix: e.g., 'upbeat house mix for a beach party'", text: $mixPrompt, axis: .vertical)
+                                .textFieldStyle(.roundedBorder)
+                                .lineLimit(2...4)
+
+                            Text("Tip: Include mood, artists, BPM range, or occasion")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 8)
+                    } label: {
+                        Label("Mix Description", systemImage: "text.bubble")
+                    }
+
+                    // MARK: - Style Presets
+                    GroupBox {
+                        LazyVGrid(columns: [
+                            GridItem(.flexible()),
+                            GridItem(.flexible()),
+                            GridItem(.flexible())
+                        ], spacing: 12) {
+                            ForEach(MixStyle.allCases, id: \.self) { style in
+                                MixStyleButton(style: style, isSelected: selectedStyle == style) {
+                                    selectedStyle = selectedStyle == style ? nil : style
+                                    if selectedStyle != nil {
+                                        mixPrompt = style.prompt
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    } label: {
+                        Label("Quick Presets", systemImage: "square.grid.2x2")
+                    }
+
+                    // MARK: - Duration Selection
+                    GroupBox {
+                        HStack(spacing: 12) {
+                            ForEach(MixDuration.allCases, id: \.self) { duration in
+                                MixDurationButton(duration: duration, isSelected: selectedDuration == duration) {
+                                    selectedDuration = duration
+                                }
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    } label: {
+                        Label("Mix Length", systemImage: "clock")
+                    }
+
+                    // MARK: - Generate Button
+                    Button(action: generateMix) {
+                        HStack(spacing: 12) {
+                            if isGenerating {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "waveform.path.ecg")
+                            }
+                            Text(isGenerating ? "Generating Mix..." : "Generate Audio Mix")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.purple)
+                    .controlSize(.large)
+                    .disabled(mixPrompt.isEmpty || isGenerating)
+
+                    // Progress Message
+                    if isGenerating && !generationProgress.isEmpty {
+                        HStack {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text(generationProgress)
+                                .foregroundStyle(.secondary)
+                        }
+                        .font(.callout)
+                    }
+
+                    // Error Message
+                    if let error = generationError {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.red)
+                            Text(error)
+                                .foregroundStyle(.red)
+                        }
+                        .font(.callout)
+                    }
+
+                    // MARK: - Info Box
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundStyle(.blue)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("**How it works:**")
+                            Text("1. AI selects tracks from your library")
+                            Text("2. Analyzes beat & key for optimal transitions")
+                            Text("3. Creates seamless crossfades with FFmpeg")
+                            Text("4. Exports a ready-to-play audio file")
+                        }
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    }
+                    .padding()
+                    .background(.quaternary.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .padding(24)
+            }
+            .frame(minWidth: 400, maxWidth: .infinity)
+
+            // Right Panel - Result / Previous Mixes
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Text(generatedMix != nil ? "Your Mix" : "Previous Mixes")
+                        .font(.title2.bold())
+                    Spacer()
+                    if generatedMix != nil {
+                        Button {
+                            generatedMix = nil
+                        } label: {
+                            Label("Show All", systemImage: "list.bullet")
+                        }
+                    }
+                }
+                .padding()
+
+                Divider()
+
+                if let mix = generatedMix {
+                    // Show generated mix result
+                    MixResultView(mix: mix)
+                } else if previousMixes.isEmpty {
+                    ContentUnavailableView(
+                        "No Mixes Yet",
+                        systemImage: "waveform",
+                        description: Text("Generate your first audio mix to get started")
+                    )
+                } else {
+                    // Show previous mixes list
+                    List(previousMixes, id: \.filename) { mix in
+                        PreviousMixRow(mix: mix) {
+                            downloadMix(filename: mix.filename)
+                        }
+                    }
+                }
+            }
+            .frame(minWidth: 300, maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            loadPreviousMixes()
+        }
+    }
+
+    // MARK: - Actions
+
+    private func generateMix() {
+        isGenerating = true
+        generationError = nil
+        generationProgress = "Selecting tracks from library..."
+
+        Task {
+            do {
+                let result = try await callGenerateMixAPI(
+                    prompt: mixPrompt,
+                    trackCount: selectedDuration.trackCount
+                )
+                await MainActor.run {
+                    isGenerating = false
+                    generatedMix = result
+                    generationProgress = ""
+                    loadPreviousMixes() // Refresh list
+
+                    // Send notification on success
+                    notificationManager.notifyMixComplete(
+                        mixName: result.filename,
+                        trackCount: result.trackCount
+                    )
+                }
+            } catch {
+                await MainActor.run {
+                    isGenerating = false
+                    generationError = error.localizedDescription
+                    generationProgress = ""
+
+                    // Send notification on failure
+                    notificationManager.notifyMixFailed(error: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func loadPreviousMixes() {
+        Task {
+            do {
+                let mixes = try await fetchPreviousMixes()
+                await MainActor.run {
+                    previousMixes = mixes
+                }
+            } catch {
+                print("Failed to load previous mixes: \(error)")
+            }
+        }
+    }
+
+    private func downloadMix(filename: String) {
+        // Use cloud server with HTTPS
+        guard let url = URL(string: "https://mixmaster.mixtape.run/api/download-mix?file=\(filename.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? filename)") else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    // MARK: - API Calls
+
+    private func callGenerateMixAPI(prompt: String, trackCount: Int) async throws -> GeneratedMix {
+        let baseUrl = "https://mixmaster.mixtape.run"
+
+        // Step 1: Start the job
+        guard let startUrl = URL(string: "\(baseUrl)/api/generate-mix") else {
+            throw MixGenerationError.invalidURL
+        }
+
+        var startRequest = URLRequest(url: startUrl)
+        startRequest.httpMethod = "POST"
+        startRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        startRequest.timeoutInterval = 30
+
+        let body: [String: Any] = [
+            "prompt": prompt,
+            "trackCount": trackCount
+        ]
+        startRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (startData, startResponse) = try await URLSession.shared.data(for: startRequest)
+
+        guard let httpResponse = startResponse as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            if let errorJson = try? JSONSerialization.jsonObject(with: startData) as? [String: Any],
+               let errorMessage = errorJson["error"] as? String {
+                throw MixGenerationError.apiError(errorMessage)
+            }
+            throw MixGenerationError.apiError("Failed to start mix generation")
+        }
+
+        guard let startJson = try? JSONSerialization.jsonObject(with: startData) as? [String: Any],
+              let jobId = startJson["jobId"] as? String else {
+            throw MixGenerationError.invalidResponse
+        }
+
+        // Step 2: Poll for status
+        await MainActor.run {
+            generationProgress = "Starting mix generation..."
+        }
+
+        let statusUrl = URL(string: "\(baseUrl)/api/mix-status/\(jobId)")!
+        var pollCount = 0
+        let maxPolls = 180 // 15 minutes at 5 second intervals
+
+        while pollCount < maxPolls {
+            try await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+            pollCount += 1
+
+            let (statusData, _) = try await URLSession.shared.data(from: statusUrl)
+
+            guard let statusJson = try? JSONSerialization.jsonObject(with: statusData) as? [String: Any],
+                  let status = statusJson["status"] as? String else {
+                continue
+            }
+
+            // Update progress message
+            if let progressMessage = statusJson["progressMessage"] as? String {
+                await MainActor.run {
+                    generationProgress = progressMessage
+                }
+            }
+
+            if status == "complete" {
+                // Parse the result
+                guard let result = statusJson["result"] as? [String: Any] else {
+                    throw MixGenerationError.invalidResponse
+                }
+
+                let mixName = result["mixName"] as? String ?? "Mix"
+                let mixUrl = result["mixUrl"] as? String ?? ""
+                let tracklist = result["tracklist"] as? [[String: Any]] ?? []
+                let duration = result["duration"] as? Double ?? 0
+
+                return GeneratedMix(
+                    filename: mixName,
+                    downloadUrl: mixUrl,
+                    duration: formatDuration(duration),
+                    trackCount: tracklist.count,
+                    tracks: tracklist.compactMap { track in
+                        MixTrackInfo(
+                            title: track["title"] as? String ?? "",
+                            artist: track["artist"] as? String ?? "",
+                            bpm: track["bpm"] as? Double ?? 0,
+                            key: track["key"] as? String ?? ""
+                        )
+                    }
+                )
+            } else if status == "failed" {
+                let errorMessage = statusJson["error"] as? String ?? "Mix generation failed"
+                throw MixGenerationError.apiError(errorMessage)
+            }
+            // Continue polling for pending/processing status
+        }
+
+        throw MixGenerationError.apiError("Mix generation timed out")
+    }
+
+    private func formatDuration(_ seconds: Double) -> String {
+        let minutes = Int(seconds) / 60
+        let secs = Int(seconds) % 60
+        return String(format: "%d:%02d", minutes, secs)
+    }
+
+    private func fetchPreviousMixes() async throws -> [PreviousMix] {
+        // Use cloud server with HTTPS
+        guard let url = URL(string: "https://mixmaster.mixtape.run/api/list-mixes") else {
+            throw MixGenerationError.invalidURL
+        }
+
+        let (data, _) = try await URLSession.shared.data(from: url)
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let mixes = json["mixes"] as? [[String: Any]] else {
+            return []
+        }
+
+        return mixes.compactMap { mix in
+            PreviousMix(
+                filename: mix["filename"] as? String ?? "",
+                name: mix["name"] as? String ?? "",
+                duration: mix["durationFormatted"] as? String ?? "",
+                size: mix["sizeFormatted"] as? String ?? "",
+                createdAt: mix["createdAt"] as? String ?? ""
+            )
+        }
+    }
+}
+
+// MARK: - Mix Generator Supporting Types
+
+struct GeneratedMix {
+    let filename: String
+    let downloadUrl: String
+    let duration: String
+    let trackCount: Int
+    let tracks: [MixTrackInfo]
+}
+
+struct MixTrackInfo {
+    let title: String
+    let artist: String
+    let bpm: Double
+    let key: String
+}
+
+struct PreviousMix {
+    let filename: String
+    let name: String
+    let duration: String
+    let size: String
+    let createdAt: String
+}
+
+enum MixStyle: String, CaseIterable {
+    case beach = "Beach Party"
+    case workout = "Workout"
+    case dinner = "Dinner Party"
+    case lateNight = "Late Night"
+    case focus = "Focus/Work"
+    case roadTrip = "Road Trip"
+
+    var icon: String {
+        switch self {
+        case .beach: return "sun.max.fill"
+        case .workout: return "figure.run"
+        case .dinner: return "fork.knife"
+        case .lateNight: return "moon.stars.fill"
+        case .focus: return "brain.head.profile"
+        case .roadTrip: return "car.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .beach: return .orange
+        case .workout: return .red
+        case .dinner: return .brown
+        case .lateNight: return .purple
+        case .focus: return .blue
+        case .roadTrip: return .green
+        }
+    }
+
+    var prompt: String {
+        switch self {
+        case .beach: return "Upbeat house and disco for a summer beach party, 118-126 BPM"
+        case .workout: return "High energy workout mix with driving beats, 128-140 BPM"
+        case .dinner: return "Chill deep house and nu-disco for a sophisticated dinner party"
+        case .lateNight: return "Dark, melodic techno for late night vibes, 122-130 BPM"
+        case .focus: return "Ambient electronica and downtempo for deep focus, 80-110 BPM"
+        case .roadTrip: return "Feel-good indie dance and electropop for a road trip"
+        }
+    }
+}
+
+enum MixDuration: String, CaseIterable {
+    case short = "30 min"
+    case medium = "1 hour"
+    case long = "2 hours"
+
+    var trackCount: Int {
+        switch self {
+        case .short: return 8
+        case .medium: return 15
+        case .long: return 30
+        }
+    }
+}
+
+enum MixGenerationError: LocalizedError {
+    case invalidURL
+    case invalidResponse
+    case apiError(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL: return "Invalid API URL"
+        case .invalidResponse: return "Invalid response from server"
+        case .apiError(let message): return message
+        }
+    }
+}
+
+// MARK: - Mix UI Components
+
+struct MixStyleButton: View {
+    let style: MixStyle
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Image(systemName: style.icon)
+                    .font(.title2)
+                Text(style.rawValue)
+                    .font(.caption)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(isSelected ? style.color.opacity(0.2) : Color.clear)
+            .foregroundStyle(isSelected ? style.color : .primary)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? style.color : Color.secondary.opacity(0.3), lineWidth: isSelected ? 2 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct MixDurationButton: View {
+    let duration: MixDuration
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: "clock")
+                    .font(.caption)
+                Text(duration.rawValue)
+                    .font(.callout)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(isSelected ? Color.purple.opacity(0.2) : Color.clear)
+            .foregroundStyle(isSelected ? .purple : .primary)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(isSelected ? Color.purple : Color.secondary.opacity(0.3), lineWidth: isSelected ? 2 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct MixResultView: View {
+    let mix: GeneratedMix
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Success Header
+            VStack(spacing: 16) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 50))
+                    .foregroundStyle(.green)
+                Text("Mix Generated!")
+                    .font(.title2.bold())
+                Text("\(mix.trackCount) tracks • \(mix.duration)")
+                    .foregroundStyle(.secondary)
+
+                // Download Button
+                Button {
+                    // Use cloud server with HTTPS
+                    if let url = URL(string: "https://mixmaster.mixtape.run\(mix.downloadUrl)") {
+                        NSWorkspace.shared.open(url)
+                    }
+                } label: {
+                    Label("Download Mix", systemImage: "arrow.down.circle.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.purple)
+            }
+            .padding(.vertical, 24)
+
+            Divider()
+
+            // Track List
+            List(Array(mix.tracks.enumerated()), id: \.offset) { index, track in
+                HStack {
+                    Text("\(index + 1)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading) {
+                        Text(track.title)
+                            .lineLimit(1)
+                        Text(track.artist)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Text(track.key)
+                        .font(.caption.monospaced())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.purple.opacity(0.2))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+
+                    Text("\(Int(track.bpm))")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 32)
+                }
+            }
+        }
+    }
+}
+
+struct PreviousMixRow: View {
+    let mix: PreviousMix
+    let onDownload: () -> Void
+
+    var body: some View {
+        HStack {
+            Image(systemName: "waveform")
+                .foregroundStyle(.purple)
+                .frame(width: 32)
+
+            VStack(alignment: .leading) {
+                Text(mix.name)
+                    .lineLimit(1)
+                HStack {
+                    Text(mix.duration)
+                    Text("•")
+                    Text(mix.size)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button(action: onDownload) {
+                Image(systemName: "arrow.down.circle")
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(.vertical, 4)
     }
 }
 

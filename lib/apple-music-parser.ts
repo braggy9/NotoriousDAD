@@ -62,80 +62,88 @@ export async function parseAppleMusicLibrary(xmlPath: string): Promise<AppleMusi
  * Parse a single track dictionary from the XML
  *
  * In plist XML, keys and values are siblings grouped by type.
- * We need to iterate through keys and match them to their corresponding values
- * by tracking which type each value is and maintaining separate counters.
+ * We build a proper key->value mapping by iterating through each value type array
+ * alongside the keys, matching them correctly regardless of XML ordering.
+ *
+ * FIX (2026-01-07): Previous approach used incrementing counters that assumed
+ * all keys had values, causing misalignment when keys were missing values
+ * (e.g., missing Play Count would cause Sample Rate to be read as Play Count).
  */
 function parseTrackDict(trackDict: any): AppleMusicTrack | null {
   const track: Partial<AppleMusicTrack> = {
     isAppleMusic: false,
   };
 
-  // Counters for each value type
-  let stringIndex = 0;
-  let integerIndex = 0;
-  let dateIndex = 0;
-  let trueIndex = 0;
-
-  // Build a map of key -> [type, index]
   const keys = trackDict.key || [];
 
-  for (let i = 0; i < keys.length; i++) {
-    const keyName = keys[i];
+  // Get all value arrays
+  const strings = trackDict.string || [];
+  const integers = trackDict.integer || [];
+  const dates = trackDict.date || [];
+  const trues = trackDict.true || [];
 
-    // Determine value type based on key name
-    let valueType: string;
-    let valueIndex: number;
+  // Build key-value map by matching keys to their corresponding value arrays
+  // The xml2js parser groups values by type, and the order matches the key order *within that type*
+  let stringIdx = 0;
+  let integerIdx = 0;
+  let dateIdx = 0;
+  let trueIdx = 0;
 
-    // String values
+  for (const keyName of keys) {
+    // String values - advance index only if this key expects a string
     if (['Name', 'Artist', 'Album', 'Album Artist', 'Composer', 'Genre', 'Kind',
          'Persistent ID', 'Track Type', 'Sort Album', 'Sort Artist', 'Sort Name',
          'Sort Album Artist'].includes(keyName)) {
-      valueType = 'string';
-      valueIndex = stringIndex++;
-      const value = trackDict.string?.[valueIndex];
+      const value = strings[stringIdx];
+      stringIdx++; // Always increment after reading, even if undefined
 
-      switch (keyName) {
-        case 'Name': track.name = value; break;
-        case 'Artist': track.artist = value; break;
-        case 'Album': track.album = value; break;
-        case 'Album Artist': track.albumArtist = value; break;
-        case 'Composer': track.composer = value; break;
-        case 'Genre': track.genre = value; break;
-        case 'Persistent ID': track.persistentId = value; break;
+      if (value !== undefined) {
+        switch (keyName) {
+          case 'Name': track.name = value; break;
+          case 'Artist': track.artist = value; break;
+          case 'Album': track.album = value; break;
+          case 'Album Artist': track.albumArtist = value; break;
+          case 'Composer': track.composer = value; break;
+          case 'Genre': track.genre = value; break;
+          case 'Persistent ID': track.persistentId = value; break;
+        }
       }
     }
-    // Integer values
+    // Integer values - advance index only if this key expects an integer
     else if (['Track ID', 'Year', 'Total Time', 'Play Count', 'Bit Rate', 'Sample Rate',
               'Size', 'Disc Number', 'Disc Count', 'Track Number', 'Track Count',
               'Artwork Count', 'Play Date'].includes(keyName)) {
-      valueType = 'integer';
-      valueIndex = integerIndex++;
-      const value = trackDict.integer?.[valueIndex];
+      const value = integers[integerIdx];
+      integerIdx++; // Always increment after reading
 
-      switch (keyName) {
-        case 'Track ID': track.trackId = value?.toString(); break;
-        case 'Year': track.year = value; break;
-        case 'Total Time': track.totalTime = value; break;
-        case 'Play Count': track.playCount = value; break;
-        case 'Bit Rate': track.bitRate = value; break;
-        case 'Sample Rate': track.sampleRate = value; break;
+      if (value !== undefined && value !== null) {
+        const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
+        switch (keyName) {
+          case 'Track ID': track.trackId = numValue.toString(); break;
+          case 'Year': track.year = numValue; break;
+          case 'Total Time': track.totalTime = numValue; break;
+          case 'Play Count': track.playCount = numValue; break;
+          case 'Bit Rate': track.bitRate = numValue; break;
+          case 'Sample Rate': track.sampleRate = numValue; break;
+        }
       }
     }
-    // Date values
+    // Date values - advance index only if this key expects a date
     else if (['Date Modified', 'Date Added', 'Play Date UTC', 'Release Date'].includes(keyName)) {
-      valueType = 'date';
-      valueIndex = dateIndex++;
-      const value = trackDict.date?.[valueIndex];
+      const value = dates[dateIdx];
+      dateIdx++; // Always increment after reading
 
-      switch (keyName) {
-        case 'Play Date UTC': track.playDate = value ? new Date(value) : undefined; break;
-        case 'Date Added': track.dateAdded = value ? new Date(value) : undefined; break;
+      if (value !== undefined) {
+        switch (keyName) {
+          case 'Play Date UTC': track.playDate = new Date(value); break;
+          case 'Date Added': track.dateAdded = new Date(value); break;
+        }
       }
     }
-    // Boolean true values
+    // Boolean true values (no false values in plist, absence = false)
     else if (['Apple Music', 'Part Of Gapless Album', 'Loved'].includes(keyName)) {
-      valueType = 'true';
-      valueIndex = trueIndex++;
+      // True values are just markers, increment counter
+      trueIdx++;
 
       if (keyName === 'Apple Music') {
         track.isAppleMusic = true;

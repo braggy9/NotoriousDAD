@@ -1,0 +1,83 @@
+{
+  "id": "mix-1767731048537-qg3la0",
+  "status": "complete",
+  "prompt": "Chilled house and by-disco ",
+  "trackCount": 8,
+  "createdAt": "2026-01-06T20:24:08.537Z",
+  "updatedAt": "2026-01-06T20:24:57.839Z",
+  "progress": 100,
+  "progressMessage": "Mix complete!",
+  "result": {
+    "mixName": "Chilled House Mix",
+    "mixUrl": "/api/download-mix?file=Chilled-House-Mix.mp3",
+    "tracklist": [
+      {
+        "position": 1,
+        "artist": "Lisa Mitchell",
+        "title": "Stevie",
+        "bpm": 110.5,
+        "key": "10B",
+        "energy": 4
+      },
+      {
+        "position": 2,
+        "artist": "Datarock",
+        "title": "Maybelline",
+        "bpm": 112,
+        "key": "11B",
+        "energy": 6
+      },
+      {
+        "position": 3,
+        "artist": "Butch, Nic Fanciulli",
+        "title": "I Want You",
+        "bpm": 125,
+        "key": "12A",
+        "energy": 7
+      },
+      {
+        "position": 4,
+        "artist": "Cassius",
+        "title": "The Sound of Violence",
+        "bpm": 119.8,
+        "key": "1A",
+        "energy": 7
+      },
+      {
+        "position": 5,
+        "artist": "Lifelike and Popular Computer",
+        "title": "Getting High (FiNAL DJs Remix)",
+        "bpm": 120,
+        "key": "7A",
+        "energy": 6
+      },
+      {
+        "position": 6,
+        "artist": "Tyler Touché Feat. Sterling Silver",
+        "title": "Midas Touch",
+        "bpm": 124,
+        "key": "6A",
+        "energy": 6
+      },
+      {
+        "position": 7,
+        "artist": "Chris Malinchak",
+        "title": "Freak",
+        "bpm": 124,
+        "key": "4A",
+        "energy": 6
+      },
+      {
+        "position": 8,
+        "artist": "M83",
+        "title": "Reunion",
+        "bpm": 124,
+        "key": "9A",
+        "energy": 6
+      }
+    ],
+    "duration": 447.89551,
+    "transitionCount": 6,
+    "harmonicPercentage": 33
+  }
+}

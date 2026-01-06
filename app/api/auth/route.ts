@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     'playlist-modify-private',
     'user-library-read',
     'user-top-read',
+    'ugc-image-upload', // Required for custom playlist cover art
   ].join(' ');
 
   const params = new URLSearchParams({

@@ -146,6 +146,125 @@ ANTHROPIC_API_KEY=...
 OPENAI_API_KEY=...
 ```
 
+## DigitalOcean Cloud Deployment
+
+### Server Details
+- **Domain**: `https://mixmaster.mixtape.run/`
+- **IP**: `129.212.248.171`
+- **OS**: Ubuntu 24.04 LTS
+- **Disk**: 80GB (upgraded from 50GB on Jan 5, 2026)
+- **RAM**: 4GB
+- **Stack**: Node.js 22, nginx (reverse proxy + SSL), PM2 (process manager), FFmpeg
+- **Audio Analysis**: aubio (BPM), keyfinder-cli (musical key)
+- **SSL**: Let's Encrypt (auto-renews via certbot)
+
+### Deployment
+```bash
+# Deploy from local machine
+./scripts/deploy-digitalocean.sh
+```
+
+### Server Management (SSH)
+```bash
+# Check app status
+pm2 status
+
+# View logs
+pm2 logs notorious-dad
+
+# Restart app
+pm2 restart notorious-dad
+
+# Check nginx
+sudo systemctl status nginx
+
+# Renew SSL (auto, but manual if needed)
+sudo certbot renew
+```
+
+### Spotify Dashboard Configuration
+
+**IMPORTANT**: Add both redirect URIs to your Spotify Developer Dashboard:
+
+1. Go to https://developer.spotify.com/dashboard
+2. Select your app → Settings → Edit
+3. Add these Redirect URIs:
+   - `https://dj-mix-generator.vercel.app/api/auth/callback` (Vercel)
+   - `https://mixmaster.mixtape.run/api/auth/callback` (Cloud server)
+4. Save changes
+
+The server `.env.local` uses the cloud server redirect URI.
+
+## Audio Library System (Server-Side)
+
+The server hosts your actual audio files for mix generation (separate from Spotify playlist generation).
+
+### Overview
+- **Location**: `/var/www/notorious-dad/audio-library/`
+- **Capacity**: ~9,400 files (under 20MB each)
+- **Analysis**: BPM detection via aubio, key detection via keyfinder-cli
+- **Data**: `/var/www/notorious-dad/data/audio-library-analysis.json`
+
+### Uploading Audio Files
+```bash
+# From local machine - uploads MIK-analyzed files under 20MB
+rsync -avz --progress --max-size=20M \
+  "/Users/tombragg/Library/Mobile Documents/com~apple~CloudDocs/DJ Music/2-MIK-Analyzed/" \
+  root@129.212.248.171:/var/www/notorious-dad/audio-library/
+```
+
+### Server-Side Scripts
+```bash
+# Analyze all audio files (BPM detection)
+bash /var/www/notorious-dad/scripts/analyze-library.sh
+
+# Monitor and auto-restart analysis if it stops
+bash /var/www/notorious-dad/scripts/monitor-analysis.sh
+```
+
+### Analysis Data Format
+```json
+{
+  "tracks": [
+    {
+      "id": "track_1704567890_abc123",
+      "filePath": "/var/www/notorious-dad/audio-library/Artist - Track.m4a",
+      "fileName": "Artist - Track.m4a",
+      "artist": "Artist",
+      "title": "Track",
+      "bpm": 128.0,
+      "bpmConfidence": 0.8,
+      "key": "Unknown",
+      "camelotKey": "8A",
+      "energy": 5,
+      "duration": 240.5,
+      "fileSize": 8500000,
+      "analyzedAt": "2026-01-06T10:00:00Z"
+    }
+  ]
+}
+```
+
+### Mix Generation API
+```bash
+# Generate a mix from audio library
+curl -X POST https://mixmaster.mixtape.run/api/generate-mix \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "chill vibes for dinner", "duration": 60}'
+```
+
+### DigitalOcean API Management
+A DigitalOcean API token is stored locally for server management:
+- **File**: `.digitalocean-token` (gitignored)
+- **Droplet ID**: 542000423
+- **Size**: s-2vcpu-4gb (80GB disk, 4GB RAM, $24/mo)
+
+```bash
+# Check droplet status via API
+curl -s -X GET "https://api.digitalocean.com/v2/droplets/542000423" \
+  -H "Authorization: Bearer $(cat .digitalocean-token)"
+```
+
 ## Apple Music Matching
 
 ### Current Status (Updated 2026-01-03)
@@ -204,6 +323,12 @@ vercel logs dj-mix-generator.vercel.app --since 5m
 
 | Date | Change |
 |------|--------|
+| Jan 6, 2026 | Added server-side audio library with BPM analysis (aubio) |
+| Jan 6, 2026 | Created Mix Generation API (`/api/generate-mix`) for audio mixes |
+| Jan 6, 2026 | Added auto-restart monitor script for analysis reliability |
+| Jan 5, 2026 | Resized DigitalOcean droplet to 80GB for full library storage |
+| Jan 5, 2026 | Deployed audio upload pipeline with rsync |
+| Jan 4, 2026 | Added Mix Generator UI to iOS and macOS apps |
 | Jan 3, 2026 | Fixed native app auth: parse request body once, accept tokens from body |
 | Jan 3, 2026 | Added macOS app with same architecture as iOS |
 | Jan 3, 2026 | Fixed artist null check in selection scoring |
@@ -216,6 +341,13 @@ vercel logs dj-mix-generator.vercel.app --since 5m
 ## iOS/macOS Native Apps
 
 Both native apps use the same architecture and authentication pattern.
+
+### Features
+1. **Playlist Generation** - Create Spotify playlists from natural language prompts
+2. **Mix Generation** - Generate audio mixes from your uploaded library (server-side)
+   - Style presets: Beach Day, Workout, Dinner Party, Late Night, Road Trip, House Party
+   - Duration options: 30min, 1hr, 2hr
+   - Auto-discovers server at `mixmaster.mixtape.run`
 
 ### Authentication Solution (2026-01-03)
 

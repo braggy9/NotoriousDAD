@@ -25,5 +25,8 @@ build/
 # Exclude CSV files
 *.csv
 
+# Exclude token files (contain secrets)
+.spotify-token.json
+
 # Exclude git
 .git/
