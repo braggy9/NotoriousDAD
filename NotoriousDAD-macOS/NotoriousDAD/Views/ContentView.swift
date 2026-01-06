@@ -1196,6 +1196,9 @@ struct MixDurationButton: View {
 struct MixResultView: View {
     let mix: GeneratedMix
 
+    @StateObject private var player = AudioPlayerManager()
+    @State private var showShareSheet = false
+
     var body: some View {
         VStack(spacing: 0) {
             // Success Header
@@ -1208,17 +1211,110 @@ struct MixResultView: View {
                 Text("\(mix.trackCount) tracks • \(mix.duration)")
                     .foregroundStyle(.secondary)
 
-                // Download Button
-                Button {
-                    // Use cloud server with HTTPS
-                    if let url = URL(string: "https://mixmaster.mixtape.run\(mix.downloadUrl)") {
-                        NSWorkspace.shared.open(url)
+                // Audio Player Controls
+                VStack(spacing: 12) {
+                    // Waveform + filename
+                    HStack {
+                        Image(systemName: "waveform")
+                            .foregroundStyle(.purple)
+                        Text(mix.filename)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .lineLimit(1)
                     }
-                } label: {
-                    Label("Download Mix", systemImage: "arrow.down.circle.fill")
+
+                    // Playback progress bar
+                    if player.duration > 0 {
+                        VStack(spacing: 4) {
+                            GeometryReader { geometry in
+                                ZStack(alignment: .leading) {
+                                    // Background track
+                                    Rectangle()
+                                        .fill(Color.secondary.opacity(0.3))
+                                        .frame(height: 6)
+
+                                    // Progress
+                                    Rectangle()
+                                        .fill(Color.purple)
+                                        .frame(width: geometry.size.width * CGFloat(player.currentTime / player.duration), height: 6)
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 3))
+                                .onTapGesture { location in
+                                    let position = min(max(0, location.x / geometry.size.width), 1)
+                                    player.seek(to: position)
+                                }
+                            }
+                            .frame(height: 6)
+
+                            // Time labels
+                            HStack {
+                                Text(formatTime(player.currentTime))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(formatTime(player.duration))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    // Control buttons
+                    HStack(spacing: 12) {
+                        // Play/Pause button
+                        Button {
+                            if player.isPlaying || player.duration > 0 {
+                                player.togglePlayPause()
+                            } else {
+                                startStreaming()
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                                    .font(.title3)
+                                Text(player.isPlaying ? "Pause" : (player.duration > 0 ? "Play" : "Stream Mix"))
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.purple)
+                        .disabled(player.isLoading)
+
+                        // Save to Music button
+                        Button {
+                            saveToMusic()
+                        } label: {
+                            Label("Save to Music", systemImage: "square.and.arrow.down")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
+                    }
+
+                    // Loading/download indicator
+                    if player.isLoading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .padding(.vertical, 4)
+                    }
+
+                    if player.downloadProgress > 0 && player.downloadProgress < 1 {
+                        HStack {
+                            ProgressView(value: player.downloadProgress)
+                            Text("\(Int(player.downloadProgress * 100))%")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if let error = player.error {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.purple)
+                .padding()
+                .background(Color.secondary.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal)
             }
             .padding(.vertical, 24)
 
@@ -1256,6 +1352,44 @@ struct MixResultView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Helper Methods
+
+    private func getMixURL() -> URL? {
+        return URL(string: "https://mixmaster.mixtape.run\(mix.downloadUrl)")
+    }
+
+    private func startStreaming() {
+        guard let url = getMixURL() else { return }
+        player.streamAudio(from: url)
+    }
+
+    private func saveToMusic() {
+        guard let url = getMixURL() else { return }
+
+        // Download the file first (if not already cached)
+        player.downloadAudio(from: url) { result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let fileURL):
+                    // Show macOS share sheet (NSSharingServicePicker)
+                    let picker = NSSharingServicePicker(items: [fileURL])
+                    if let window = NSApplication.shared.keyWindow,
+                       let contentView = window.contentView {
+                        picker.show(relativeTo: .zero, of: contentView, preferredEdge: .minY)
+                    }
+                case .failure(let error):
+                    player.error = "Download failed: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private func formatTime(_ seconds: TimeInterval) -> String {
+        let mins = Int(seconds) / 60
+        let secs = Int(seconds) % 60
+        return String(format: "%d:%02d", mins, secs)
     }
 }
 
