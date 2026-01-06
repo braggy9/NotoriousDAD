@@ -45,6 +45,9 @@ next-env.d.ts
 CLAUDE.local.md
 .claude/CLAUDE.local.md
 
+# Symlinked documentation (local reference only)
+SPOTIFY-DOWNLOADER.md
+
 # Large data files (too big for GitHub >100MB limit)
 *.xml
 data/apple-music-checkpoint.json

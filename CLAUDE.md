@@ -125,6 +125,7 @@ Selection Score = sum of:
 data/
 ├── matched-tracks.json         # MIK library (4,080 tracks)
 │   └── Format: { tracks: [{ spotifyTrack, mikData }] }
+│   └── Source: spotify-library-downloader sync-mix-generator script
 │
 ├── apple-music-checkpoint.json # Apple Music matches (27k+)
 │   └── Format: { lastIndex, matches: [{ appleMusicTrack, spotifyTrack }] }
@@ -134,6 +135,42 @@ data/
 │
 └── apple-music-matched.json    # Legacy format (deprecated)
 ```
+
+## Spotify Library Downloader Integration
+
+The **[spotify-library-downloader](file:///Users/tombragg/spotify-library-downloader)** project automates the workflow for populating your DJ library:
+
+### Data Pipeline
+
+```
+Spotify Library (Liked Songs + Playlists)
+          ↓
+  yt-dlp download via YouTube
+          ↓
+  ~/DJ Music/5-New-To-Analyze/
+          ↓
+  Mixed In Key analysis (BPM + Key detection)
+          ↓
+  ~/DJ Music/2-MIK-Analyzed/
+          ↓
+  npm run sync-mix-generator
+          ↓
+  ~/dj-mix-generator/data/matched-tracks.json  ← Used by playlist generator
+```
+
+### Key Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `npm run download-playlists-parallel` | Download all Spotify tracks (400 tracks/hour) |
+| `npm run mik-watch` | Auto-move analyzed files |
+| `npm run sync-mix-generator` | Export MIK data to this project |
+
+### Documentation
+
+See symlinked docs: [SPOTIFY-DOWNLOADER.md](./SPOTIFY-DOWNLOADER.md) (symlink to `~/spotify-library-downloader/README.md`)
+
+**Note**: The symlink is gitignored - only exists on your local machine.
 
 ## Environment Variables
 
