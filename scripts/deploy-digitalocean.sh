@@ -56,8 +56,9 @@ rsync -avz --progress \
   --exclude '.spotify-token.json' \
   --exclude '.env.local' \
   --exclude '.env.production*' \
-  --exclude 'CLAUDE*.md' \
+  --exclude 'CLAUDE.local.md' \
   --exclude '*.local.md' \
+  --exclude 'SPOTIFY-DOWNLOADER.md' \
   --exclude 'tsconfig.tsbuildinfo' \
   -e "sshpass -p '$PASSWORD' ssh -o StrictHostKeyChecking=no" \
   $LOCAL_DIR/ $SERVER:$SERVER_DIR/
