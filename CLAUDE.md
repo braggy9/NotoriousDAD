@@ -319,6 +319,26 @@ vercel logs dj-mix-generator.vercel.app --since 5m
 ./scripts/deploy.sh
 ```
 
+## Versioning
+
+All platforms use **semantic versioning** (MAJOR.MINOR.PATCH):
+
+| Platform | Version | Location | Display |
+|----------|---------|----------|---------|
+| **Web App** | 2.1.0 | `package.json` | Footer on main page |
+| **iOS App** | 2.1.0 | `Info.plist` | Settings → About → Version |
+| **macOS App** | 2.1.0 | `Info.plist` | Settings → About → Version |
+
+**Version History:**
+- **2.1.0** (2026-01-07): Added streaming audio player + Mix Generator UI
+- **2.0.0** (2026-01-01): Deterministic selection architecture
+- **1.0.0** (2025-12-28): Initial MIK + Spotify integration
+
+When incrementing versions, update all three files:
+1. `package.json` → `"version"`
+2. `NotoriousDAD-iOS/NotoriousDAD/Info.plist` → `CFBundleShortVersionString`
+3. `NotoriousDAD-macOS/NotoriousDAD/Info.plist` → `CFBundleShortVersionString`
+
 ## Architecture Evolution
 
 | Date | Change |

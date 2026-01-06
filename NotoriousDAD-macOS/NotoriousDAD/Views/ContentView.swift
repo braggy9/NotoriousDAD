@@ -1503,9 +1503,18 @@ struct SettingsView: View {
                 Text("MIK CSV import settings")
                 Text("Apple Music sync settings")
             }
+
+            Section("About") {
+                HStack {
+                    Text("Version")
+                    Spacer()
+                    Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
         .padding()
-        .frame(width: 400, height: 300)
+        .frame(width: 400, height: 350)
     }
 }
 

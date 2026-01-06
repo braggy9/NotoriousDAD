@@ -464,6 +464,11 @@ function HomeContent() {
           </div>
         )}
       </div>
+
+      {/* Footer with version */}
+      <footer className="mt-12 text-center text-sm text-gray-500">
+        <p>Notorious DAD v2.1.0</p>
+      </footer>
     </main>
   );
 }
