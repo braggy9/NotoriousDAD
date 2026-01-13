@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ApplicationProperties</key>
+	<dict>
+		<key>ApplicationPath</key>
+		<string>Applications/NotoriousDAD.app</string>
+		<key>Architectures</key>
+		<array>
+			<string>arm64</string>
+		</array>
+		<key>CFBundleIdentifier</key>
+		<string>com.notoriousdad.ios</string>
+		<key>CFBundleShortVersionString</key>
+		<string>2.1.0</string>
+		<key>CFBundleVersion</key>
+		<string>5</string>
+		<key>SigningIdentity</key>
+		<string>Apple Development: Thomas Bragg (P4TSGNHA6U)</string>
+		<key>Team</key>
+		<string>89NX9R78Y7</string>
+	</dict>
+	<key>ArchiveVersion</key>
+	<integer>2</integer>
+	<key>CreationDate</key>
+	<date>2026-01-08T01:56:14Z</date>
+	<key>Name</key>
+	<string>NotoriousDAD-iOS</string>
+	<key>SchemeName</key>
+	<string>NotoriousDAD-iOS</string>
+</dict>
+</plist>

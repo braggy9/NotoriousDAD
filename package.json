@@ -1,6 +1,6 @@
 {
   "name": "dj-mix-generator",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.71.2",
     "@types/xml2js": "^0.4.14",
     "@vercel/postgres": "^0.10.0",
+    "better-sqlite3": "^12.5.0",
     "dotenv": "^17.2.3",
     "next": "16.0.10",
     "openai": "^6.15.0",

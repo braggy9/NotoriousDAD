@@ -3,11 +3,10 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const clientId = process.env.SPOTIFY_CLIENT_ID;
 
-  // Use the current host for redirect URI (works with all Vercel deployments)
-  const url = new URL(request.url);
-  const redirectUri = `${url.origin}/api/auth/callback`;
+  // Use environment variable for redirect URI (nginx proxy doesn't pass correct host)
+  const redirectUri = process.env.SPOTIFY_REDIRECT_URI || 'https://mixmaster.mixtape.run/api/auth/callback';
 
-  console.log('🔐 Auth flow started:', { redirectUri, host: url.host });
+  console.log('🔐 Auth flow started:', { redirectUri });
 
   const scopes = [
     'user-read-private',

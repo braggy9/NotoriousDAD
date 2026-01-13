@@ -305,13 +305,14 @@ The server hosts your actual audio files for mix generation (separate from Spoti
 **IMPORTANT**: Audio mix generation (`/api/generate-mix`) can **ONLY** use files stored on this server. It does NOT use Spotify/Apple Music tracks.
 
 ### Overview
-- **Location**: `/var/www/notorious-dad/audio-library/` (on Hetzner server)
-- **Current**: 12,669 files migrated (111GB)
-- **In Progress**: Uploading to ~26,237 files (90% of MIK library)
+- **Location**: `/var/www/notorious-dad/audio-library/` (symlink to `/mnt/HC_Volume_104378843`)
+- **Current**: **13,016 files (114GB)** - 44.9% of MIK library
+- **Target**: ~26,237 files (90% of MIK library, under 20MB size limit)
 - **Size Limit**: Under 20MB per file (excludes 2,728 files = 9.4% of library)
-- **Storage**: 100GB volume with 149GB free (can expand to all 28,965 files if needed)
+- **Storage**: 100GB volume with 135GB free (can expand to all 28,965 files if needed)
 - **Analysis**: BPM detection via aubio, key detection via MIK tags + keyfinder-cli
 - **Data**: `/var/www/notorious-dad/data/audio-library-analysis.json`
+- **Important**: Use `-L` flag with find/du to follow symlinks (e.g., `find -L /path` or `du -shL /path`)
 
 ### Uploading Audio Files
 ```bash

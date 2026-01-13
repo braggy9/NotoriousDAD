@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🎧 Generate Mix API - Prompt: "${prompt}"`);
+    console.log(`🎧 Generate Mix API - Prompt: "${prompt}", trackCount: ${trackCount}`);
 
     // Create job immediately
     const job = createJob(prompt, trackCount);
@@ -226,7 +226,7 @@ async function processMixJob(jobId: string, prompt: string, trackCount: number):
     });
 
     // Step 3: Select tracks based on constraints
-    const selectedTracks = selectTracks(mixableFiles, constraints);
+    const selectedTracks = await selectTracks(mixableFiles, constraints);
     console.log(`  🎵 Selected ${selectedTracks.length} tracks`);
 
     updateJob(jobId, {
@@ -340,8 +340,11 @@ async function parsePrompt(prompt: string, defaultTrackCount: number): Promise<M
     energyCurve: 'steady',
   };
 
+  // Check if prompt explicitly mentions track count
+  const hasExplicitTrackCount = /\d+\s*tracks?/i.test(prompt);
+
   if (!apiKey) {
-    return parsePromptBasic(prompt, defaults);
+    return parsePromptBasic(prompt, defaults, hasExplicitTrackCount);
   }
 
   try {
@@ -357,12 +360,14 @@ async function parsePrompt(prompt: string, defaultTrackCount: number): Promise<M
 "${prompt}"
 
 Return ONLY valid JSON with these fields:
-- trackCount (number, default ${defaultTrackCount})
+- trackCount (number, ONLY include if explicitly mentioned in prompt, otherwise omit)
 - bpmRange: { min, max } (reasonable DJ range)
 - energyRange: { min, max } (1-10 scale)
 - genres: string[] (detected genres)
 - moods: string[] (mood descriptors)
-- energyCurve: "build" | "peak" | "chill" | "steady"`,
+- energyCurve: "build" | "peak" | "chill" | "steady"
+
+IMPORTANT: Only include trackCount field if the user explicitly specified a number of tracks. If not mentioned, omit this field entirely.`,
         },
       ],
     });
@@ -371,26 +376,37 @@ Return ONLY valid JSON with these fields:
     if (content.type === 'text') {
       const jsonMatch = content.text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return { ...defaults, ...JSON.parse(jsonMatch[0]) };
+        const parsed = JSON.parse(jsonMatch[0]);
+        // Only use Claude's trackCount if prompt explicitly mentioned it
+        if (!hasExplicitTrackCount && parsed.trackCount !== undefined) {
+          console.log(`  ⚠️ Ignoring Claude's trackCount (${parsed.trackCount}), using app's (${defaultTrackCount})`);
+          delete parsed.trackCount;
+        }
+        return { ...defaults, ...parsed };
       }
     }
   } catch (err) {
     console.log('  ⚠️ Claude parsing failed, using basic parser');
   }
 
-  return parsePromptBasic(prompt, defaults);
+  return parsePromptBasic(prompt, defaults, hasExplicitTrackCount);
 }
 
 /**
  * Basic regex-based prompt parsing fallback
  */
-function parsePromptBasic(prompt: string, defaults: MixConstraints): MixConstraints {
+function parsePromptBasic(prompt: string, defaults: MixConstraints, hasExplicitTrackCount: boolean): MixConstraints {
   const lower = prompt.toLowerCase();
 
-  // Extract track count
-  const trackMatch = lower.match(/(\d+)\s*tracks?/);
-  if (trackMatch) {
-    defaults.trackCount = parseInt(trackMatch[1]);
+  // Extract track count ONLY if explicitly mentioned
+  if (hasExplicitTrackCount) {
+    const trackMatch = lower.match(/(\d+)\s*tracks?/);
+    if (trackMatch) {
+      defaults.trackCount = parseInt(trackMatch[1]);
+      console.log(`  📊 Using explicit trackCount from prompt: ${defaults.trackCount}`);
+    }
+  } else {
+    console.log(`  📊 Using app's trackCount: ${defaults.trackCount}`);
   }
 
   // Extract BPM
@@ -413,7 +429,8 @@ function parsePromptBasic(prompt: string, defaults: MixConstraints): MixConstrai
   const genrePatterns = [
     'tech house', 'deep house', 'house', 'techno', 'trance',
     'drum and bass', 'dnb', 'hip hop', 'hip-hop', 'breaks',
-    'disco', 'nu-disco', 'nu disco', 'funk', 'soul', 'r&b', 'ambient', 'downtempo',
+    'disco', 'nu-disco', 'nu disco', 'nudisco', 'funk', 'soul', 'r&b',
+    'ambient', 'downtempo', 'chill', 'lounge', 'indie dance', 'electronica',
   ];
   for (const genre of genrePatterns) {
     if (lower.includes(genre)) {
@@ -425,12 +442,12 @@ function parsePromptBasic(prompt: string, defaults: MixConstraints): MixConstrai
 }
 
 /**
- * Select tracks based on constraints
+ * Select tracks based on constraints (with genre filtering)
  */
-function selectTracks(
+async function selectTracks(
   pool: IndexedAudioFile[],
   constraints: MixConstraints
-): IndexedAudioFile[] {
+): Promise<IndexedAudioFile[]> {
   // Filter by BPM range
   let filtered = pool.filter((track) => {
     const bpm = track.mikData?.bpm;
@@ -444,25 +461,87 @@ function selectTracks(
     return energy >= constraints.energyRange.min && energy <= constraints.energyRange.max;
   });
 
+  // Filter by genre using Claude AI if genres specified
+  if (constraints.genres?.length > 0 && filtered.length > 0) {
+    console.log(`  🎵 Filtering by genre: ${constraints.genres.join(', ')}`);
+    filtered = await filterByGenre(filtered, constraints.genres);
+    console.log(`  ✓ ${filtered.length} tracks match genre filter`);
+  }
+
   // If not enough tracks, expand the BPM range
   if (filtered.length < constraints.trackCount) {
     console.log('  ⚠️ Expanding BPM range to find more tracks');
-    filtered = pool.filter((track) => {
+    let expanded = pool.filter((track) => {
       const bpm = track.mikData?.bpm;
       if (!bpm) return false;
       return bpm >= constraints.bpmRange.min - 15 && bpm <= constraints.bpmRange.max + 15;
     });
+    // Re-apply genre filter to expanded pool
+    if (constraints.genres?.length > 0) {
+      expanded = await filterByGenre(expanded, constraints.genres);
+    }
+    filtered = expanded;
   }
 
-  // If still not enough, use all tracks
+  // If still not enough, use all tracks (without genre filter as fallback)
   if (filtered.length < constraints.trackCount) {
-    console.log('  ⚠️ Using all available tracks');
+    console.log('  ⚠️ Using all available tracks (genre filter relaxed)');
     filtered = pool.filter(track => track.mikData?.bpm);
   }
 
   // Shuffle and take the requested number
   const shuffled = filtered.sort(() => Math.random() - 0.5);
   return shuffled.slice(0, constraints.trackCount);
+}
+
+/**
+ * Filter tracks by genre using Claude AI
+ */
+async function filterByGenre(
+  tracks: IndexedAudioFile[],
+  genres: string[]
+): Promise<IndexedAudioFile[]> {
+  if (tracks.length === 0) return tracks;
+
+  // Batch tracks for efficient API usage
+  const trackList = tracks.map((t, i) => `${i}. ${t.artist} - ${t.title}`).join('\n');
+  const genreStr = genres.join(', ');
+
+  try {
+    const anthropic = new Anthropic();
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      messages: [{
+        role: 'user',
+        content: `You are a DJ music expert. From this list of tracks, identify which ones fit the genre(s): ${genreStr}
+
+For house music, include: house, deep house, tech house, progressive house, nu disco, disco, funky house, vocal house, french house.
+For nudisco, include: nu disco, disco, indie dance, funky, boogie.
+Exclude: ambient, experimental, indie rock, folk, classical, hip-hop (unless specifically house remixes).
+
+Tracks:
+${trackList}
+
+Return ONLY a JSON array of the track numbers (0-indexed) that match. Example: [0, 3, 7, 12]
+If no tracks match, return an empty array: []`
+      }]
+    });
+
+    const content = response.content[0];
+    if (content.type === 'text') {
+      // Extract JSON array from response
+      const match = content.text.match(/\[[\d,\s]*\]/);
+      if (match) {
+        const indices: number[] = JSON.parse(match[0]);
+        return indices.map(i => tracks[i]).filter(Boolean);
+      }
+    }
+  } catch (err) {
+    console.log('  ⚠️ Genre filter failed, using all tracks:', err);
+  }
+
+  return tracks; // Return all tracks if filtering fails
 }
 
 /**

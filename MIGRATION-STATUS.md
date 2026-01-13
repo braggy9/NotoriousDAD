@@ -23,21 +23,23 @@
 - ✅ Cloudflare SSL configured (Flexible mode)
 - ✅ Site accessible at https://mixmaster.mixtape.run
 
-### Data Migration (COMPLETE)
-- ✅ Audio library: 100% complete (12,669 files transferred)
-- ✅ Total size: 111GB transferred from DO to Hetzner
-- ✅ Completed at: ~7:25 AM UTC Jan 12
-- ✅ All files verified and accessible
+### Data Migration (COMPLETE + EXPANDED)
+- ✅ Initial transfer: 12,669 files (111GB) from DO to Hetzner - Completed ~7:25 AM UTC Jan 12
+- ✅ Additional upload: 347 files (3GB) from local MIK library - Completed ~Jan 13 4:44 AM UTC
+- ✅ **Current total: 13,016 files (114GB)**
+- ✅ All files verified and accessible on volume
 
 ---
 
 ## What's Left
 
 ### Testing (COMPLETE)
-1. ✅ Audio library migration completed - all 12,669 files transferred
-2. ✅ Files verified successfully - 111GB accessible on volume
-3. ✅ API endpoints tested - all working correctly
-4. ✅ Mix generation tested - successfully created test mix in ~28 seconds
+1. ✅ Initial migration: 12,669 files (111GB) - Completed Jan 12
+2. ✅ Additional upload: 347 files (3GB) - Completed Jan 13
+3. ✅ **Current library: 13,016 files (114GB)**
+4. ✅ Files verified successfully - accessible via symlink (requires -L flag with find/du)
+5. ✅ API endpoints tested - all working correctly
+6. ✅ Mix generation tested - successfully created test mix in ~28 seconds
 
 ### Short-term (24-48 hours)
 1. Monitor Hetzner server stability
@@ -91,20 +93,24 @@
 - All three domains proxied through Cloudflare (orange cloud)
 
 ### Audio Library
-- Location: /mnt/HC_Volume_104378843 (symlinked)
-- Migration method: Server-to-server rsync (DO → Hetzner)
-- Files: 12,670 audio files
-- Size: ~112GB (current), 249GB (target when full)
+- Location: /mnt/HC_Volume_104378843 (symlinked to /var/www/notorious-dad/audio-library)
+- Migration method: Server-to-server rsync (DO → Hetzner) + local uploads
+- Files: **13,016 audio files** (44.9% of 28,965 MIK library)
+- Size: **114GB** (current), 249GB (target when uploading all 28,965 MIK files)
+- **Important**: Use `-L` flag with find/du to follow symlinks (e.g., `find -L /path` or `du -shL /path`)
 
 ---
 
 ## Testing Commands
 
-Once migration completes:
+**IMPORTANT**: Use `-L` flag with find/du to follow symlinks!
 
 ```bash
-# Check migration status
-ssh root@178.156.214.56 'du -sh /var/www/notorious-dad/audio-library && find /var/www/notorious-dad/audio-library -type f | wc -l'
+# Check migration status (correct way with symlinks)
+ssh root@178.156.214.56 'du -shL /var/www/notorious-dad/audio-library && find -L /var/www/notorious-dad/audio-library -type f | wc -l'
+
+# Alternative: Check actual volume directly
+ssh root@178.156.214.56 'du -sh /mnt/HC_Volume_104378843 && find /mnt/HC_Volume_104378843 -type f | wc -l'
 
 # Test API health
 curl https://mixmaster.mixtape.run/api/health
@@ -143,10 +149,10 @@ ssh root@178.156.214.56 'pm2 logs notorious-dad --lines 50'
 - Camelot keys: 6B, 8A, 10A
 
 **✅ Audio Library:**
-- Files: 12,669 (100%)
-- Size: 111GB
+- Files: 13,016 (44.9% of MIK library)
+- Size: 114GB
 - Location: `/mnt/HC_Volume_104378843` → `/var/www/notorious-dad/audio-library`
-- Access: Verified working
+- Access: Verified working (use `-L` flag to follow symlinks)
 
 ---
 
@@ -181,6 +187,24 @@ ssh root@178.156.214.56 'pm2 logs notorious-dad --lines 50'
 
 ---
 
-**Last Updated**: January 12, 2026 10:05 AM UTC
-**Status**: Migration 100% complete, all systems operational
-**Next Action**: Monitor for 24-48 hours, then delete DigitalOcean droplet to start saving $18/month
+## Library Upload Progress
+
+**Phase 1**: Initial migration from DigitalOcean
+- ✅ 12,669 files (111GB) - Completed Jan 12, 7:25 AM UTC
+
+**Phase 2**: Additional under-20MB files from local MIK library
+- ✅ 347 files (3GB) uploaded - Completed Jan 13, 4:44 AM UTC
+- 📊 Remaining to upload: ~13,221 files (from 26,237 total under-20MB)
+- 📊 Over-20MB files: 2,728 files (9.4% of library, excluded)
+
+**Current Status**: 13,016 files on server (44.9% of total 28,965 MIK library)
+
+---
+
+**Last Updated**: January 13, 2026 4:45 AM UTC
+**Status**: Migration 100% complete + library expansion in progress
+**Current Library**: 13,016 files (114GB) - 44.9% of MIK library
+**Next Actions**:
+1. Continue uploading remaining under-20MB files (13,221 files remaining)
+2. Monitor server stability
+3. After 48 hours of stability: Delete DigitalOcean droplet to start saving $18/month

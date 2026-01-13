@@ -7,25 +7,25 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const error = searchParams.get('error');
 
-  // Use the current host for redirect URI (must match auth route)
-  const url = new URL(request.url);
-  const redirectUri = `${url.origin}/api/auth/callback`;
+  // Use environment variable for redirect URI (nginx proxy doesn't pass correct host)
+  const baseUrl = process.env.SPOTIFY_REDIRECT_URI?.replace('/api/auth/callback', '') || 'https://mixmaster.mixtape.run';
+  const redirectUri = process.env.SPOTIFY_REDIRECT_URI || 'https://mixmaster.mixtape.run/api/auth/callback';
 
   console.log('🔄 Callback received:', {
     hasCode: !!code,
     hasError: !!error,
     redirectUri,
-    host: url.host
+    baseUrl
   });
 
   if (error) {
     console.error('❌ Auth error:', error);
-    return NextResponse.redirect(new URL(`/?error=${error}`, request.url));
+    return NextResponse.redirect(new URL(`/?error=${error}`, baseUrl));
   }
 
   if (!code) {
     console.error('❌ No code received');
-    return NextResponse.redirect(new URL('/?error=no_code', request.url));
+    return NextResponse.redirect(new URL('/?error=no_code', baseUrl));
   }
 
   try {
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.text();
       console.error('Token exchange failed:', errorData);
-      return NextResponse.redirect(new URL('/?error=token_exchange_failed', request.url));
+      return NextResponse.redirect(new URL('/?error=token_exchange_failed', baseUrl));
     }
 
     const tokenData = await tokenResponse.json();
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 
     // For now, redirect to home with success
     // In a real app, you'd store the access_token and refresh_token in a session/database
-    const response = NextResponse.redirect(new URL('/?success=true', request.url));
+    const response = NextResponse.redirect(new URL('/?success=true', baseUrl));
 
     // Store tokens in HTTP-only cookies for security
     const cookieOptions = {
@@ -100,6 +100,6 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Error in callback:', error);
-    return NextResponse.redirect(new URL('/?error=callback_error', request.url));
+    return NextResponse.redirect(new URL('/?error=callback_error', baseUrl));
   }
 }

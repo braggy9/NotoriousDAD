@@ -29,7 +29,7 @@ The mix generation system creates **actual audio mixes** (downloadable MP3 files
 - **API Endpoint**: `/api/generate-mix`
 - **Input**: Natural language prompt + track count
 - **Data Sources**:
-  - **ONLY files on Hetzner server** (currently 12,669 files, expanding to ~26,237)
+  - **ONLY files on Hetzner server** (currently 13,016 files, expanding to ~26,237)
   - MIK metadata from those files (BPM, Camelot key, energy)
 - **Output**: Mixed MP3 audio file (downloadable)
 - **Uses AI**: Claude for prompt parsing and genre filtering
@@ -235,7 +235,7 @@ The audio mix generator does **NOT** use:
 4. **Filter** to only tracks that exist locally
 5. Generate audio mix with `/api/generate-mix` using matched files
 
-**Limitation**: Only ~12,669 tracks (soon ~26,237) on server vs ~48,000 in playlists
+**Limitation**: Only ~13,016 tracks (growing to ~26,237) on server vs ~48,000 in playlists
 
 **Success Rate**:
 - If all playlist tracks are in your MIK-analyzed folder: High
@@ -244,8 +244,8 @@ The audio mix generator does **NOT** use:
 ### Option 2: Expand Library on Server
 
 **Current**:
-- 12,669 files on server (under 20MB, ~49% of library)
-- **In progress**: Uploading 13,568 more files → 26,237 total (90% of library)
+- 13,016 files on server (under 20MB, 44.9% of library)
+- **In progress**: Uploading remaining ~13,221 files → 26,237 total (90% of library)
 
 **Next Level**:
 - Remove 20MB limit → Upload all 28,965 MIK files
@@ -267,7 +267,7 @@ The audio mix generator does **NOT** use:
 ## Current Limitations
 
 ### 1. Library Size
-- **On Server**: 12,669 files (expanding to ~26,237)
+- **On Server**: 13,016 files (expanding to ~26,237)
 - **In MIK Library**: 28,965 files total
 - **Missing**: 2,728 files over 20MB (9.4%)
 
@@ -290,9 +290,10 @@ The audio mix generator does **NOT** use:
 
 ## Recommendations
 
-### Immediate (Happening Now)
-✅ **Upload remaining under-20MB files** (13,568 files)
-- Will give you 26,237 files total (90% coverage)
+### Immediate (In Progress)
+⏳ **Upload remaining under-20MB files** (~13,221 files remaining)
+- 347 files uploaded so far (completed Jan 13)
+- Will give you 26,237 files total (90% coverage) when complete
 - No additional storage cost
 
 ### Short-term
@@ -335,7 +336,7 @@ The audio mix generator does **NOT** use:
 
 **Step-by-Step**:
 1. Claude parses: house genre, 115-135 BPM, energy 5-9, build curve
-2. Loads 12,669 files from server (soon 26,237)
+2. Loads 13,016 files from server (growing to 26,237)
 3. Filters to ~500 tracks in BPM range
 4. Filters to ~300 tracks with high energy
 5. **Claude AI**: Filters to ~150 house tracks (genre detection)
@@ -356,4 +357,4 @@ The audio mix generator does **NOT** use:
 
 ---
 
-**Last Updated**: January 12, 2026 10:30 AM UTC
+**Last Updated**: January 13, 2026 4:45 AM UTC

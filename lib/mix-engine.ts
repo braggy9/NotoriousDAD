@@ -251,7 +251,10 @@ export async function mixTwoTracks(
     // Calculate mix points - ensuring we leave room for crossfade
     // The mix out point + crossfade duration must not exceed track length
     const maxMixOutPoint = track1Duration! - crossfadeSeconds - 1; // Leave 1s buffer
-    const defaultMixOutPoint = Math.min(track1Duration! * 0.85, maxMixOutPoint);
+
+    // Use 97% of track duration for better mix length (only trim very end)
+    // This gives proper mix durations: 12 tracks ~30min, 20 tracks ~1hr, 40 tracks ~2hr
+    const defaultMixOutPoint = Math.min(track1Duration! * 0.97, maxMixOutPoint);
     const mixOutPoint = track1.mixOutPoint
       ? Math.min(track1.mixOutPoint, maxMixOutPoint)
       : defaultMixOutPoint;

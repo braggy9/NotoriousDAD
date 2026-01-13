@@ -1,31 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
-import * as os from 'os';
+import { NextResponse } from 'next/server';
 
 /**
  * GET /api/discover
  *
- * Returns server info for iOS/macOS app discovery.
- * Apps can ping this endpoint to verify connectivity.
+ * Server discovery endpoint for native apps.
+ * Returns service information for connection verification.
  */
-export async function GET(request: NextRequest) {
-  const interfaces = os.networkInterfaces();
-  const addresses: string[] = [];
-
-  for (const [name, nets] of Object.entries(interfaces)) {
-    if (!nets) continue;
-    for (const net of nets) {
-      if (net.family === 'IPv4' && !net.internal) {
-        addresses.push(net.address);
-      }
-    }
-  }
-
+export async function GET() {
   return NextResponse.json({
-    service: 'NotoriousDAD Mix Server',
-    version: '1.0.0',
-    status: 'online',
-    addresses,
-    port: 3000,
-    timestamp: new Date().toISOString(),
+    service: 'NotoriousDAD Mix Generator',
+    version: '2.2.0',
+    features: {
+      playlistGeneration: true,
+      audioMixGeneration: true,
+      spotifyIntegration: true,
+      appleMusicMatching: true,
+    },
+    endpoints: {
+      generatePlaylist: '/api/generate-playlist',
+      generateMix: '/api/generate-mix',
+      mixStatus: '/api/mix-status/[jobId]',
+      listMixes: '/api/list-mixes',
+    },
   });
 }

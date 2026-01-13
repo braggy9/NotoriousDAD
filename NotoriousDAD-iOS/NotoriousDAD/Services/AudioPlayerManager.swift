@@ -1,6 +1,9 @@
 import Foundation
 import AVFoundation
 import Combine
+#if os(iOS)
+import UIKit
+#endif
 
 /// Manages audio playback for generated mixes with streaming support
 class AudioPlayerManager: ObservableObject {
@@ -17,13 +20,23 @@ class AudioPlayerManager: ObservableObject {
     private var downloadedFileURL: URL?
 
     init() {
-        // Configure audio session for playback
+        #if os(iOS)
+        // Configure audio session for background playback (iOS only)
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            // .playback category + options allows background audio and AirPlay
+            try AVAudioSession.sharedInstance().setCategory(
+                .playback,
+                mode: .default,
+                options: [.allowAirPlay, .allowBluetoothA2DP]
+            )
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             self.error = "Failed to configure audio session: \(error.localizedDescription)"
         }
+
+        // Enable remote control events (lock screen controls)
+        UIApplication.shared.beginReceivingRemoteControlEvents()
+        #endif
     }
 
     deinit {

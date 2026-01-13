@@ -1,8 +1,719 @@
 import SwiftUI
 import NotoriousDADKit
+import AVFoundation
+import Combine
 
 // Use the same type alias as LibraryManager for consistency
 typealias DADPlaylist = NotoriousDADKit.Playlist
+
+// MARK: - Network Manager with Retry Logic
+
+class NetworkManager {
+    static let shared = NetworkManager()
+
+    private init() {}
+
+    /// Perform a network request with automatic retry and exponential backoff
+    func performRequest<T>(
+        maxRetries: Int = 3,
+        initialDelay: TimeInterval = 1.0,
+        operation: @escaping () async throws -> T
+    ) async throws -> T {
+        var lastError: Error?
+        var delay = initialDelay
+
+        for attempt in 1...maxRetries {
+            do {
+                return try await operation()
+            } catch {
+                lastError = error
+
+                // Don't retry on certain errors
+                if isNonRetryableError(error) {
+                    throw error
+                }
+
+                // Last attempt - throw the error
+                if attempt == maxRetries {
+                    throw NetworkError.maxRetriesExceeded(underlying: error, attempts: maxRetries)
+                }
+
+                // Wait before retrying with exponential backoff
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                delay *= 2 // Exponential backoff
+            }
+        }
+
+        throw lastError ?? NetworkError.unknown
+    }
+
+    private func isNonRetryableError(_ error: Error) -> Bool {
+        // Don't retry on authentication or client errors
+        if let networkError = error as? NetworkError {
+            switch networkError {
+            case .authenticationRequired, .invalidRequest:
+                return true
+            default:
+                return false
+            }
+        }
+
+        // Check for HTTP status codes that shouldn't be retried
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .cancelled, .userAuthenticationRequired:
+                return true
+            default:
+                return false
+            }
+        }
+
+        return false
+    }
+
+    /// Check if device has network connectivity
+    func isConnected() -> Bool {
+        // Simple check - try to create a socket connection
+        // For production, use NWPathMonitor
+        return true // Simplified for now
+    }
+}
+
+enum NetworkError: LocalizedError {
+    case noConnection
+    case timeout
+    case serverError(statusCode: Int)
+    case authenticationRequired
+    case invalidRequest
+    case maxRetriesExceeded(underlying: Error, attempts: Int)
+    case unknown
+
+    var errorDescription: String? {
+        switch self {
+        case .noConnection:
+            return "No internet connection. Please check your network and try again."
+        case .timeout:
+            return "Request timed out. The server may be busy - please try again."
+        case .serverError(let code):
+            return "Server error (\(code)). Please try again later."
+        case .authenticationRequired:
+            return "Authentication required. Please reconnect to Spotify."
+        case .invalidRequest:
+            return "Invalid request. Please check your input and try again."
+        case .maxRetriesExceeded(_, let attempts):
+            return "Failed after \(attempts) attempts. Please check your connection and try again."
+        case .unknown:
+            return "An unexpected error occurred. Please try again."
+        }
+    }
+
+    var isRetryable: Bool {
+        switch self {
+        case .noConnection, .timeout, .serverError, .maxRetriesExceeded, .unknown:
+            return true
+        case .authenticationRequired, .invalidRequest:
+            return false
+        }
+    }
+}
+
+// MARK: - Audio Player Manager (macOS)
+
+class AudioPlayerManager: ObservableObject {
+    @Published var isPlaying = false
+    @Published var currentTime: TimeInterval = 0
+    @Published var duration: TimeInterval = 0
+    @Published var downloadProgress: Double = 0
+    @Published var isLoading = false
+    @Published var error: String?
+
+    private var player: AVPlayer?
+    private var timeObserver: Any?
+    private var cancellables = Set<AnyCancellable>()
+
+    func streamAudio(from url: URL) {
+        cleanup()
+        isLoading = true
+        error = nil
+
+        let playerItem = AVPlayerItem(url: url)
+        player = AVPlayer(playerItem: playerItem)
+
+        let interval = CMTime(seconds: 0.5, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        timeObserver = player?.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+            self?.currentTime = time.seconds
+            if let duration = self?.player?.currentItem?.duration.seconds,
+               !duration.isNaN && !duration.isInfinite {
+                self?.duration = duration
+            }
+        }
+
+        player?.currentItem?.publisher(for: \.status)
+            .sink { [weak self] status in
+                switch status {
+                case .readyToPlay:
+                    self?.isLoading = false
+                case .failed:
+                    self?.error = "Failed to load audio"
+                    self?.isLoading = false
+                default:
+                    break
+                }
+            }
+            .store(in: &cancellables)
+
+        player?.play()
+        isPlaying = true
+    }
+
+    func togglePlayPause() {
+        guard let player = player else { return }
+        if isPlaying { player.pause() } else { player.play() }
+        isPlaying.toggle()
+    }
+
+    func seek(to position: Double) {
+        guard let duration = player?.currentItem?.duration.seconds,
+              !duration.isNaN && !duration.isInfinite else { return }
+        let targetTime = CMTime(seconds: duration * position, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        player?.seek(to: targetTime)
+    }
+
+    func stop() {
+        player?.pause()
+        player?.seek(to: .zero)
+        isPlaying = false
+        currentTime = 0
+    }
+
+    func downloadAudio(from url: URL, completion: @escaping (Result<URL, Error>) -> Void) {
+        // If already downloaded, return cached file
+        if let cachedURL = downloadedFileURL, FileManager.default.fileExists(atPath: cachedURL.path) {
+            completion(.success(cachedURL))
+            return
+        }
+
+        downloadProgress = 0
+
+        let task = URLSession.shared.downloadTask(with: url) { [weak self] tempURL, response, error in
+            if let error = error {
+                DispatchQueue.main.async {
+                    self?.error = error.localizedDescription
+                    self?.downloadProgress = 0
+                }
+                completion(.failure(error))
+                return
+            }
+
+            guard let tempURL = tempURL else {
+                completion(.failure(NSError(domain: "AudioPlayer", code: -1, userInfo: [NSLocalizedDescriptionKey: "No file downloaded"])))
+                return
+            }
+
+            let tempDir = FileManager.default.temporaryDirectory
+            let fileName = url.lastPathComponent.isEmpty ? "mix.mp3" : url.lastPathComponent
+            let destinationURL = tempDir.appendingPathComponent(fileName)
+
+            do {
+                if FileManager.default.fileExists(atPath: destinationURL.path) {
+                    try FileManager.default.removeItem(at: destinationURL)
+                }
+                try FileManager.default.moveItem(at: tempURL, to: destinationURL)
+                DispatchQueue.main.async {
+                    self?.downloadedFileURL = destinationURL
+                    self?.downloadProgress = 1.0
+                }
+                completion(.success(destinationURL))
+            } catch {
+                completion(.failure(error))
+            }
+        }
+        task.resume()
+    }
+
+    func getDownloadedFileURL() -> URL? {
+        return downloadedFileURL
+    }
+
+    private var downloadedFileURL: URL?
+
+    private func cleanup() {
+        if let observer = timeObserver {
+            player?.removeTimeObserver(observer)
+            timeObserver = nil
+        }
+        player?.pause()
+        player = nil
+    }
+}
+
+// MARK: - App Theme System (Electric Gold)
+
+struct AppTheme {
+    struct Colors {
+        static let gold = Color(red: 1.0, green: 0.84, blue: 0.0)
+        static let goldDeep = Color(red: 0.85, green: 0.65, blue: 0.13)
+        static let goldDark = Color(red: 0.55, green: 0.41, blue: 0.08)
+
+        static let background = Color(red: 0.06, green: 0.06, blue: 0.08)
+        static let surface = Color(red: 0.10, green: 0.10, blue: 0.12)
+        static let surfaceElevated = Color(red: 0.14, green: 0.14, blue: 0.16)
+        static let surfaceHighlight = Color(red: 0.18, green: 0.18, blue: 0.20)
+
+        static let textPrimary = Color.white
+        static let textSecondary = Color(white: 0.65)
+        static let textTertiary = Color(white: 0.45)
+
+        static let success = Color(red: 0.3, green: 0.85, blue: 0.4)
+        static let error = Color(red: 1.0, green: 0.35, blue: 0.35)
+        static let warning = Color(red: 1.0, green: 0.7, blue: 0.2)
+
+        static let accentCyan = Color(red: 0.2, green: 0.8, blue: 0.9)
+        static let accentPink = Color(red: 1.0, green: 0.4, blue: 0.6)
+    }
+
+    struct Typography {
+        static let largeTitle = Font.system(size: 28, weight: .bold, design: .rounded)
+        static let title = Font.system(size: 22, weight: .bold, design: .rounded)
+        static let title2 = Font.system(size: 18, weight: .semibold, design: .rounded)
+        static let headline = Font.system(size: 14, weight: .semibold, design: .rounded)
+        static let body = Font.system(size: 13, weight: .regular, design: .default)
+        static let callout = Font.system(size: 12, weight: .medium, design: .default)
+        static let caption = Font.system(size: 11, weight: .medium, design: .default)
+    }
+
+    struct Spacing {
+        static let xxs: CGFloat = 4
+        static let xs: CGFloat = 8
+        static let sm: CGFloat = 12
+        static let md: CGFloat = 16
+        static let lg: CGFloat = 24
+        static let xl: CGFloat = 32
+    }
+
+    struct Radius {
+        static let sm: CGFloat = 6
+        static let md: CGFloat = 10
+        static let lg: CGFloat = 14
+    }
+}
+
+// MARK: - Prompt Template System
+
+struct PromptTemplate: Identifiable, Codable, Equatable {
+    let id: UUID
+    var name: String
+    var includeArtists: String
+    var referenceArtists: String
+    var vibe: String?
+    var energy: String
+    var notes: String
+    var createdAt: Date
+
+    init(id: UUID = UUID(), name: String, includeArtists: String = "", referenceArtists: String = "", vibe: String? = nil, createdAt: Date = Date(), energy: String = "Build", notes: String = "") {
+        self.id = id
+        self.name = name
+        self.includeArtists = includeArtists
+        self.referenceArtists = referenceArtists
+        self.vibe = vibe
+        self.createdAt = createdAt
+        self.energy = energy
+        self.notes = notes
+    }
+}
+
+class TemplateManager: ObservableObject {
+    @Published var templates: [PromptTemplate] = []
+    private let userDefaults = UserDefaults.standard
+    private let templatesKey = "savedTemplates"
+
+    // Default templates
+    static let defaultTemplates: [PromptTemplate] = [
+        PromptTemplate(
+            name: "🏃‍♂️ Workout",
+            includeArtists: "Fred again",
+            referenceArtists: "Chemical Brothers, Fatboy Slim",
+            vibe: "energetic",
+            energy: "Build",
+            notes: "High energy mix for workouts"
+        ),
+        PromptTemplate(
+            name: "🍽️ Dinner Party",
+            includeArtists: "Disclosure",
+            referenceArtists: "Tame Impala",
+            vibe: "chill",
+            energy: "Sustain",
+            notes: "Sophisticated vibes for dinner"
+        ),
+        PromptTemplate(
+            name: "🎉 House Party",
+            includeArtists: "Fred again, Disclosure",
+            referenceArtists: "Fatboy Slim, Chemical Brothers",
+            vibe: "party",
+            energy: "Build",
+            notes: "Peak time party energy"
+        ),
+        PromptTemplate(
+            name: "🌅 Sunset Session",
+            includeArtists: "Rufus du Sol",
+            referenceArtists: "Tame Impala",
+            vibe: "dreamy",
+            energy: "Sustain",
+            notes: "Melodic sunset vibes"
+        )
+    ]
+
+    init() {
+        loadTemplates()
+    }
+
+    private func loadTemplates() {
+        if let data = userDefaults.data(forKey: templatesKey),
+           let decoded = try? JSONDecoder().decode([PromptTemplate].self, from: data) {
+            templates = decoded
+        } else {
+            templates = TemplateManager.defaultTemplates
+            saveTemplates()
+        }
+    }
+
+    private func saveTemplates() {
+        if let encoded = try? JSONEncoder().encode(templates) {
+            userDefaults.set(encoded, forKey: templatesKey)
+        }
+    }
+
+    func saveTemplate(_ template: PromptTemplate) {
+        if let index = templates.firstIndex(where: { $0.id == template.id }) {
+            templates[index] = template
+        } else {
+            templates.append(template)
+        }
+        saveTemplates()
+
+        // Sync to server
+        Task {
+            await syncToServer(template)
+        }
+    }
+
+    func deleteTemplate(_ template: PromptTemplate) {
+        templates.removeAll { $0.id == template.id }
+        saveTemplates()
+
+        // Sync deletion to server
+        Task {
+            await deleteFromServer(template)
+        }
+    }
+
+    // Server sync methods
+    func syncFromServer() async {
+        guard let url = URL(string: "https://mixmaster.mixtape.run/api/user/templates") else { return }
+
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+
+            struct ServerResponse: Codable {
+                struct ServerTemplate: Codable {
+                    let id: String
+                    let name: String
+                    let includeArtists: String?
+                    let referenceArtists: String?
+                    let vibe: String?
+                    let energy: String?
+                    let notes: String?
+                    let createdAt: String
+                }
+                let templates: [ServerTemplate]
+            }
+
+            let decoded = try JSONDecoder().decode(ServerResponse.self, from: data)
+
+            // Convert server templates to local format
+            let serverTemplates: [PromptTemplate] = decoded.templates.compactMap { st in
+                guard let uuid = UUID(uuidString: st.id) else { return nil }
+                let dateFormatter = ISO8601DateFormatter()
+                let createdDate = dateFormatter.date(from: st.createdAt) ?? Date()
+
+                return PromptTemplate(
+                    id: uuid,
+                    name: st.name,
+                    includeArtists: st.includeArtists ?? "",
+                    referenceArtists: st.referenceArtists ?? "",
+                    vibe: st.vibe,
+                    createdAt: createdDate,
+                    energy: st.energy ?? "Build",
+                    notes: st.notes ?? ""
+                )
+            }
+
+            // Merge with local templates
+            await MainActor.run {
+                // Keep default templates
+                let defaults = templates.filter { t in
+                    TemplateManager.defaultTemplates.contains { $0.name == t.name }
+                }
+
+                // Merge with server templates
+                var merged = defaults
+                for serverTemplate in serverTemplates {
+                    if !merged.contains(where: { $0.id == serverTemplate.id }) {
+                        merged.append(serverTemplate)
+                    }
+                }
+
+                templates = merged
+                saveTemplates()
+            }
+        } catch {
+            print("Failed to sync templates from server: \(error)")
+        }
+    }
+
+    private func syncToServer(_ template: PromptTemplate) async {
+        guard let url = URL(string: "https://mixmaster.mixtape.run/api/user/templates") else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let dateFormatter = ISO8601DateFormatter()
+        let templateData: [String: Any] = [
+            "id": template.id.uuidString,
+            "name": template.name,
+            "includeArtists": template.includeArtists,
+            "referenceArtists": template.referenceArtists,
+            "vibe": template.vibe ?? "",
+            "energy": template.energy,
+            "notes": template.notes,
+            "createdAt": dateFormatter.string(from: template.createdAt)
+        ]
+
+        request.httpBody = try? JSONSerialization.data(withJSONObject: templateData)
+
+        do {
+            _ = try await URLSession.shared.data(for: request)
+        } catch {
+            print("Failed to sync template to server: \(error)")
+        }
+    }
+
+    private func deleteFromServer(_ template: PromptTemplate) async {
+        guard let url = URL(string: "https://mixmaster.mixtape.run/api/user/templates/\(template.id.uuidString)") else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+
+        do {
+            _ = try await URLSession.shared.data(for: request)
+        } catch {
+            print("Failed to delete template from server: \(error)")
+        }
+    }
+}
+
+// MARK: - Generation History System
+
+struct HistoryTrackItem: Codable, Equatable {
+    let name: String
+    let artist: String
+    let bpm: Double?
+    let key: String?
+}
+
+struct GenerationHistoryItem: Identifiable, Codable, Equatable {
+    let id: UUID
+    let prompt: String
+    let playlistName: String
+    let playlistId: String?
+    let audioMixUrl: String?
+    let trackCount: Int
+    let createdAt: Date
+    let tracks: [HistoryTrackItem]
+
+    var typeDescription: String {
+        if audioMixUrl != nil {
+            return "Audio Mix"
+        } else if playlistId != nil {
+            return "Spotify Playlist"
+        } else {
+            return "Unknown"
+        }
+    }
+
+    init(id: UUID = UUID(), prompt: String, playlistName: String, playlistId: String? = nil, audioMixUrl: String? = nil, trackCount: Int, createdAt: Date = Date(), tracks: [HistoryTrackItem] = []) {
+        self.id = id
+        self.prompt = prompt
+        self.playlistName = playlistName
+        self.playlistId = playlistId
+        self.audioMixUrl = audioMixUrl
+        self.trackCount = trackCount
+        self.createdAt = createdAt
+        self.tracks = tracks
+    }
+}
+
+class HistoryManager: ObservableObject {
+    @Published var history: [GenerationHistoryItem] = []
+    private let userDefaults = UserDefaults.standard
+    private let historyKey = "generationHistory"
+    private let maxHistoryItems = 50
+
+    init() {
+        loadHistory()
+    }
+
+    private func loadHistory() {
+        if let data = userDefaults.data(forKey: historyKey),
+           let decoded = try? JSONDecoder().decode([GenerationHistoryItem].self, from: data) {
+            history = Array(decoded.prefix(maxHistoryItems))
+        }
+    }
+
+    private func saveHistory() {
+        let trimmed = Array(history.prefix(maxHistoryItems))
+        if let encoded = try? JSONEncoder().encode(trimmed) {
+            userDefaults.set(encoded, forKey: historyKey)
+        }
+    }
+
+    func addItem(_ item: GenerationHistoryItem) {
+        history.insert(item, at: 0)
+        if history.count > maxHistoryItems {
+            history = Array(history.prefix(maxHistoryItems))
+        }
+        saveHistory()
+
+        // Sync to server
+        Task {
+            await syncToServer(item)
+        }
+    }
+
+    func clearHistory() {
+        history.removeAll()
+        saveHistory()
+    }
+
+    // Server sync methods
+    func syncFromServer() async {
+        guard let url = URL(string: "https://mixmaster.mixtape.run/api/user/history") else { return }
+
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+
+            struct ServerResponse: Codable {
+                struct ServerHistoryItem: Codable {
+                    struct ServerTrack: Codable {
+                        let name: String
+                        let artist: String
+                        let bpm: Double?
+                        let key: String?
+                    }
+
+                    let id: String
+                    let prompt: String
+                    let playlistName: String
+                    let playlistId: String?
+                    let audioMixUrl: String?
+                    let trackCount: Int
+                    let createdAt: String
+                    let tracks: [ServerTrack]?
+                }
+                let history: [ServerHistoryItem]
+            }
+
+            let decoded = try JSONDecoder().decode(ServerResponse.self, from: data)
+
+            // Convert server history to local format
+            let serverHistory: [GenerationHistoryItem] = decoded.history.compactMap { sh in
+                guard let uuid = UUID(uuidString: sh.id) else { return nil }
+                let dateFormatter = ISO8601DateFormatter()
+                let createdDate = dateFormatter.date(from: sh.createdAt) ?? Date()
+
+                let tracks = sh.tracks?.map { t in
+                    HistoryTrackItem(name: t.name, artist: t.artist, bpm: t.bpm, key: t.key)
+                } ?? []
+
+                return GenerationHistoryItem(
+                    id: uuid,
+                    prompt: sh.prompt,
+                    playlistName: sh.playlistName,
+                    playlistId: sh.playlistId,
+                    audioMixUrl: sh.audioMixUrl,
+                    trackCount: sh.trackCount,
+                    createdAt: createdDate,
+                    tracks: tracks
+                )
+            }
+
+            // Merge with local history (server is source of truth)
+            await MainActor.run {
+                var merged = serverHistory
+
+                // Add any local items not on server
+                for localItem in history {
+                    if !merged.contains(where: { $0.id == localItem.id }) {
+                        merged.append(localItem)
+                    }
+                }
+
+                // Sort by date and trim
+                history = Array(merged.sorted { $0.createdAt > $1.createdAt }.prefix(maxHistoryItems))
+                saveHistory()
+            }
+        } catch {
+            print("Failed to sync history from server: \(error)")
+        }
+    }
+
+    private func syncToServer(_ item: GenerationHistoryItem) async {
+        guard let url = URL(string: "https://mixmaster.mixtape.run/api/user/history") else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let dateFormatter = ISO8601DateFormatter()
+
+        var itemData: [String: Any] = [
+            "id": item.id.uuidString,
+            "prompt": item.prompt,
+            "playlistName": item.playlistName,
+            "trackCount": item.trackCount,
+            "createdAt": dateFormatter.string(from: item.createdAt),
+            "tracks": item.tracks.map { track -> [String: Any] in
+                var trackData: [String: Any] = [
+                    "name": track.name,
+                    "artist": track.artist
+                ]
+                if let bpm = track.bpm {
+                    trackData["bpm"] = bpm
+                }
+                if let key = track.key {
+                    trackData["key"] = key
+                }
+                return trackData
+            }
+        ]
+
+        if let playlistId = item.playlistId {
+            itemData["playlistId"] = playlistId
+        }
+        if let audioMixUrl = item.audioMixUrl {
+            itemData["audioMixUrl"] = audioMixUrl
+        }
+
+        request.httpBody = try? JSONSerialization.data(withJSONObject: itemData)
+
+        do {
+            _ = try await URLSession.shared.data(for: request)
+        } catch {
+            print("Failed to sync history to server: \(error)")
+        }
+    }
+}
 
 struct ContentView: View {
     @EnvironmentObject var spotifyManager: SpotifyManager
@@ -25,9 +736,16 @@ struct ContentView: View {
                 HStack {
                     Image(systemName: "waveform.circle.fill")
                         .font(.largeTitle)
-                        .foregroundStyle(.purple)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [AppTheme.Colors.gold, AppTheme.Colors.goldDeep],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                     Text("Notorious DAD")
-                        .font(.headline)
+                        .font(AppTheme.Typography.headline)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
                 }
                 .padding()
 
@@ -46,17 +764,18 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     if spotifyManager.isAuthenticated {
                         Label("Spotify Connected", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(AppTheme.Colors.success)
                     } else {
                         Button("Connect Spotify") {
                             spotifyManager.authorize()
                         }
                         .buttonStyle(.borderedProminent)
+                        .tint(AppTheme.Colors.gold)
                     }
 
                     Text("\(libraryManager.trackCount) tracks loaded")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(AppTheme.Typography.caption)
+                        .foregroundStyle(AppTheme.Colors.textSecondary)
                 }
                 .padding()
             }
@@ -80,6 +799,8 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .newPlaylist)) { _ in
             showingNewPlaylist = true
         }
+        .tint(AppTheme.Colors.gold)
+        .preferredColorScheme(.dark)
     }
 
     private func iconForTab(_ tab: Tab) -> String {
@@ -1116,9 +1837,10 @@ enum MixDuration: String, CaseIterable {
 
     var trackCount: Int {
         switch self {
-        case .short: return 8
-        case .medium: return 15
-        case .long: return 30
+        // Match iOS presets (assuming ~3.5 min per track with crossfade)
+        case .short: return 12   // ~30-35 min
+        case .medium: return 20  // ~55-65 min
+        case .long: return 40    // ~2 hours
         }
     }
 }
@@ -1430,22 +2152,534 @@ struct PreviousMixRow: View {
 
 struct LibraryView: View {
     @EnvironmentObject var libraryManager: LibraryManager
+    @State private var searchText = ""
+    @State private var selectedFilter: LibraryFilter = .all
+    @State private var showFilters = false
+
+    // DJ Filters
+    @State private var selectedKey: String?
+    @State private var bpmMin: Double = 80
+    @State private var bpmMax: Double = 180
+    @State private var bpmFilterActive = false
+
+    enum LibraryFilter: String, CaseIterable {
+        case all = "All"
+        case mik = "MIK"
+        case appleMusic = "Apple Music"
+    }
+
+    // Available Camelot keys for filtering
+    static let camelotKeys = [
+        "1A", "2A", "3A", "4A", "5A", "6A", "7A", "8A", "9A", "10A", "11A", "12A",
+        "1B", "2B", "3B", "4B", "5B", "6B", "7B", "8B", "9B", "10B", "11B", "12B"
+    ]
+
+    var activeFilterCount: Int {
+        var count = 0
+        if selectedKey != nil { count += 1 }
+        if bpmFilterActive { count += 1 }
+        return count
+    }
+
+    var filteredTracks: [NotoriousDADKit.Track] {
+        var tracks = libraryManager.tracks
+
+        // Source filter
+        switch selectedFilter {
+        case .mik: tracks = tracks.filter { $0.mikData != nil }
+        case .appleMusic: tracks = tracks.filter { $0.appleMusicPlayCount > 0 }
+        case .all: break
+        }
+
+        // Key filter
+        if let key = selectedKey {
+            tracks = tracks.filter { $0.camelotKey == key || $0.mikData?.key == key }
+        }
+
+        // BPM filter
+        if bpmFilterActive {
+            tracks = tracks.filter { track in
+                guard let bpm = track.bpm else { return false }
+                return bpm >= bpmMin && bpm <= bpmMax
+            }
+        }
+
+        // Search filter
+        if !searchText.isEmpty {
+            tracks = tracks.filter {
+                $0.name.localizedCaseInsensitiveContains(searchText) ||
+                $0.artists.joined(separator: ", ").localizedCaseInsensitiveContains(searchText)
+            }
+        }
+
+        return Array(tracks.prefix(100))
+    }
 
     var body: some View {
-        VStack {
-            Text("Library")
-                .font(.largeTitle.bold())
-            Text("\(libraryManager.trackCount) tracks")
-                .foregroundStyle(.secondary)
+        VStack(spacing: 0) {
+            // Header with stats
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Library")
+                        .font(.largeTitle.bold())
+                    Text("\(libraryManager.trackCount.formatted()) total tracks")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
-            // Would show track list, import options, etc.
-            ContentUnavailableView(
-                "Library View",
-                systemImage: "music.note.list",
-                description: Text("Track browsing and MIK import coming soon")
+                Spacer()
+
+                // Stats
+                HStack(spacing: 12) {
+                    StatBadge(icon: "waveform", value: libraryManager.mikTrackCount, label: "MIK", color: .cyan)
+                    StatBadge(icon: "music.note", value: libraryManager.appleMusicTrackCount, label: "Apple Music", color: .pink)
+                }
+            }
+            .padding()
+
+            Divider()
+
+            // Toolbar: Search + Filters
+            HStack(spacing: 12) {
+                // Search
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search tracks or artists...", text: $searchText)
+                        .textFieldStyle(.plain)
+                }
+                .padding(8)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .frame(maxWidth: 300)
+
+                // Source filters
+                Picker("Filter", selection: $selectedFilter) {
+                    ForEach(LibraryFilter.allCases, id: \.self) { filter in
+                        Text(filter.rawValue).tag(filter)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 280)
+
+                Spacer()
+
+                // DJ Filters button
+                Button {
+                    showFilters.toggle()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "slider.horizontal.3")
+                        Text("DJ Filters")
+                        if activeFilterCount > 0 {
+                            Text("\(activeFilterCount)")
+                                .font(.caption)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(AppTheme.Colors.gold)
+                                .foregroundColor(.black)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding()
+
+            // Active filter pills
+            if activeFilterCount > 0 {
+                HStack(spacing: 8) {
+                    Text("Active filters:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if let key = selectedKey {
+                        FilterPill(text: "Key: \(key)") {
+                            selectedKey = nil
+                        }
+                    }
+                    if bpmFilterActive {
+                        FilterPill(text: "BPM: \(Int(bpmMin))-\(Int(bpmMax))") {
+                            bpmFilterActive = false
+                        }
+                    }
+
+                    Spacer()
+
+                    Button("Clear All") {
+                        selectedKey = nil
+                        bpmFilterActive = false
+                    }
+                    .font(.caption)
+                    .foregroundColor(AppTheme.Colors.gold)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+            }
+
+            Divider()
+
+            // Track list
+            if libraryManager.isLoading {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Loading library...")
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if filteredTracks.isEmpty {
+                ContentUnavailableView(
+                    "No tracks found",
+                    systemImage: "music.note.slash",
+                    description: Text(searchText.isEmpty ? "Try adjusting your filters" : "No matches for \"\(searchText)\"")
+                )
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 1) {
+                        ForEach(filteredTracks) { track in
+                            TrackRowMac(track: track)
+                        }
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showFilters) {
+            DJFiltersSheetMac(
+                selectedKey: $selectedKey,
+                bpmMin: $bpmMin,
+                bpmMax: $bpmMax,
+                bpmFilterActive: $bpmFilterActive
             )
         }
+    }
+}
+
+// MARK: - Helper Views
+
+struct StatBadge: View {
+    let icon: String
+    let value: Int
+    let label: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .foregroundStyle(color)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("\(value.formatted())")
+                    .font(.caption.bold())
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+struct FilterPill: View {
+    let text: String
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .font(.caption)
+            Button {
+                onRemove()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(AppTheme.Colors.gold.opacity(0.2))
+        .clipShape(Capsule())
+    }
+}
+
+struct TrackRowMac: View {
+    let track: NotoriousDADKit.Track
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Track info
+            VStack(alignment: .leading, spacing: 2) {
+                Text(track.name)
+                    .font(.body)
+                    .lineLimit(1)
+                Text(track.artists.joined(separator: ", "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            // MIK data
+            if let mik = track.mikData {
+                HStack(spacing: 8) {
+                    if let key = mik.key, !key.isEmpty {
+                        Text(key)
+                            .font(.caption.bold())
+                            .foregroundColor(.cyan)
+                            .frame(minWidth: 28)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.cyan.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                    if let bpm = mik.bpm, bpm > 0 {
+                        Text("\(Int(bpm))")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                            .frame(minWidth: 32)
+                    }
+                }
+            }
+
+            // Apple Music playcount
+            if track.appleMusicPlayCount > 0 {
+                HStack(spacing: 4) {
+                    Image(systemName: "play.circle.fill")
+                        .foregroundStyle(.pink)
+                        .font(.caption)
+                    Text("\(track.appleMusicPlayCount)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(width: 60)
+            }
+
+            // Duration
+            Text(formatDuration(track.durationMs))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.tertiary)
+                .frame(width: 40)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.3))
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            if hovering {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
+    }
+
+    private func formatDuration(_ ms: Int) -> String {
+        let seconds = ms / 1000
+        let minutes = seconds / 60
+        let remainingSeconds = seconds % 60
+        return String(format: "%d:%02d", minutes, remainingSeconds)
+    }
+}
+
+// MARK: - DJ Filters Sheet (macOS)
+
+struct DJFiltersSheetMac: View {
+    @Binding var selectedKey: String?
+    @Binding var bpmMin: Double
+    @Binding var bpmMax: Double
+    @Binding var bpmFilterActive: Bool
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        VStack(spacing: 20) {
+            // Header
+            HStack {
+                Text("DJ Filters")
+                    .font(.title2.bold())
+                Spacer()
+                Button("Done") {
+                    dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Key Filter
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Label("Musical Key", systemImage: "music.quarternote.3")
+                                    .font(.headline)
+                                Spacer()
+                                if selectedKey != nil {
+                                    Button("Clear") {
+                                        selectedKey = nil
+                                    }
+                                    .foregroundColor(AppTheme.Colors.gold)
+                                }
+                            }
+
+                            // Minor keys (A row)
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Minor Keys")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 12), spacing: 8) {
+                                    ForEach(1...12, id: \.self) { num in
+                                        let key = "\(num)A"
+                                        KeyButtonMac(key: key, isSelected: selectedKey == key) {
+                                            selectedKey = selectedKey == key ? nil : key
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Major keys (B row)
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Major Keys")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 12), spacing: 8) {
+                                    ForEach(1...12, id: \.self) { num in
+                                        let key = "\(num)B"
+                                        KeyButtonMac(key: key, isSelected: selectedKey == key) {
+                                            selectedKey = selectedKey == key ? nil : key
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(12)
+                    }
+
+                    // BPM Filter
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Label("BPM Range", systemImage: "metronome")
+                                    .font(.headline)
+                                Spacer()
+                                Toggle("", isOn: $bpmFilterActive)
+                                    .labelsHidden()
+                            }
+
+                            if bpmFilterActive {
+                                VStack(spacing: 16) {
+                                    // Range display
+                                    HStack {
+                                        Text("\(Int(bpmMin))")
+                                            .font(.title3.bold())
+                                            .foregroundColor(AppTheme.Colors.gold)
+                                            .frame(width: 50)
+                                        Spacer()
+                                        Text("to")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        Spacer()
+                                        Text("\(Int(bpmMax))")
+                                            .font(.title3.bold())
+                                            .foregroundColor(AppTheme.Colors.gold)
+                                            .frame(width: 50)
+                                    }
+
+                                    // Min slider
+                                    HStack {
+                                        Text("Min")
+                                            .font(.caption)
+                                            .frame(width: 35, alignment: .leading)
+                                        Slider(value: $bpmMin, in: 60...180, step: 5) { editing in
+                                            if bpmMin > bpmMax - 5 {
+                                                bpmMin = bpmMax - 5
+                                            }
+                                        }
+                                    }
+
+                                    // Max slider
+                                    HStack {
+                                        Text("Max")
+                                            .font(.caption)
+                                            .frame(width: 35, alignment: .leading)
+                                        Slider(value: $bpmMax, in: 60...200, step: 5) { editing in
+                                            if bpmMax < bpmMin + 5 {
+                                                bpmMax = bpmMin + 5
+                                            }
+                                        }
+                                    }
+
+                                    // Presets
+                                    HStack(spacing: 12) {
+                                        Text("Presets:")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+
+                                        BPMPresetButtonMac(label: "House", range: 120...130) {
+                                            bpmMin = 120
+                                            bpmMax = 130
+                                        }
+                                        BPMPresetButtonMac(label: "Techno", range: 130...140) {
+                                            bpmMin = 130
+                                            bpmMax = 140
+                                        }
+                                        BPMPresetButtonMac(label: "D&B", range: 160...180) {
+                                            bpmMin = 160
+                                            bpmMax = 180
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(12)
+                    }
+                }
+            }
+        }
         .padding()
+        .frame(width: 600, height: 500)
+    }
+}
+
+struct KeyButtonMac: View {
+    let key: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(key)
+                .font(.caption)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(isSelected ? AppTheme.Colors.gold : Color(nsColor: .controlBackgroundColor))
+                .foregroundColor(isSelected ? .black : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct BPMPresetButtonMac: View {
+    let label: String
+    let range: ClosedRange<Int>
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Text(label)
+                    .font(.caption.bold())
+                Text("\(range.lowerBound)-\(range.upperBound)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.bordered)
     }
 }
 
