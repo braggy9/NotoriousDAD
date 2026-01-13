@@ -25,9 +25,29 @@ npx tsx scripts/match-apple-music-v2.ts
 
 ## Core Architecture (v2.0 - Deterministic)
 
-### Architecture Overview
+### Two Distinct Systems
 
-The playlist generation uses a **hybrid approach**:
+**IMPORTANT**: This project has TWO separate generation systems:
+
+1. **Spotify Playlist Generator** (`/api/generate-playlist`)
+   - Input: Natural language prompt
+   - Uses: Apple Music matches (~40k tracks) + MIK metadata + Spotify catalog
+   - Output: **Spotify playlist URL** (streaming links)
+   - Can create playlists with ~48,000 tracks
+   - No audio files needed
+
+2. **Audio Mix Generator** (`/api/generate-mix`)
+   - Input: Natural language prompt + track count
+   - Uses: **ONLY files on Hetzner server** (12,669→26,237 files)
+   - Output: **Downloadable MP3 mix file** (with crossfades)
+   - Limited to tracks physically stored on server
+   - Cannot use Spotify/Apple Music tracks
+
+See `MIX-GENERATION-ANALYSIS.md` for detailed comparison and pipeline explanation.
+
+### Playlist Generation Architecture (Metadata-Based)
+
+The Spotify playlist generation uses a **hybrid approach**:
 - **Claude AI** for NLP parsing (understanding prompts) and creative naming
 - **Deterministic algorithms** for track selection (reliable, no AI guessing)
 - **Camelot-based math** for harmonic ordering (professional DJ mixing)
@@ -103,10 +123,21 @@ Selection Score = sum of:
 
 ## Key Files
 
-### Playlist Generation
+### Spotify Playlist Generation (Metadata-Based)
 - `app/api/generate-playlist/route.ts` - Main endpoint (deterministic selection)
 - `lib/playlist-nlp.ts` - NLP constraint extraction (Claude)
 - `lib/automix-optimizer.ts` - Camelot-based harmonic ordering
+- Uses: Apple Music matches + MIK metadata + Spotify catalog
+- Output: Spotify playlist URL (streaming)
+
+### Audio Mix Generation (File-Based)
+- `app/api/generate-mix/route.ts` - Audio mix generation endpoint
+- `lib/mix-engine.ts` - FFmpeg-based audio mixing with crossfades
+- `lib/audio-library-indexer.ts` - Server audio library management
+- `lib/beat-analyzer.ts` - BPM detection via aubio
+- Uses: **ONLY files on Hetzner server** (12,669→26,237 files)
+- Output: Downloadable MP3 mix file
+- **See**: `MIX-GENERATION-ANALYSIS.md` for detailed pipeline explanation
 
 ### DJ Features
 - `lib/camelot-wheel.ts` - Harmonic mixing compatibility
@@ -198,22 +229,42 @@ ANTHROPIC_API_KEY=...
 OPENAI_API_KEY=...
 ```
 
-## DigitalOcean Cloud Deployment
+## Hetzner Cloud Deployment
 
 ### Server Details
-- **Domain**: `https://mixmaster.mixtape.run/`
-- **IP**: `129.212.248.171`
+- **Domains**:
+  - `https://mixmaster.mixtape.run/` (primary)
+  - `https://mixtape.run/`
+  - `https://www.mixtape.run/`
+- **Provider**: Hetzner Cloud (migrated from DigitalOcean Jan 12, 2026)
+- **Server**: CPX31 (€17.59/mo ~$19/mo)
+- **Volume**: 100GB ext4 storage (€10/mo ~$11/mo)
+- **Total Cost**: €27.59/mo (~$30/mo - saves $18/mo vs DigitalOcean)
+- **IP**: 178.156.214.56
 - **OS**: Ubuntu 24.04 LTS
-- **Disk**: 80GB (upgraded from 50GB on Jan 5, 2026)
-- **RAM**: 4GB
-- **Stack**: Node.js 22, nginx (reverse proxy + SSL), PM2 (process manager), FFmpeg
-- **Audio Analysis**: aubio (BPM), keyfinder-cli (musical key)
-- **SSL**: Let's Encrypt (auto-renews via certbot)
+- **Server Disk**: 160GB NVMe SSD (OS + app)
+- **Audio Storage**: 100GB volume (mounted at /mnt/HC_Volume_104378843, symlinked to /var/www/notorious-dad/audio-library)
+- **Total Storage**: 260GB (fits 249GB library with headroom)
+- **RAM**: 8GB
+- **CPU**: 4 vCPUs
+- **Location**: Ashburn, VA (us-east)
+- **Stack**: Node.js 22, nginx (reverse proxy), PM2 (process manager), FFmpeg
+- **Audio Analysis**: aubio (BPM), MIK tag extraction
+- **CDN/SSL**: Cloudflare (proxied, Flexible SSL mode)
+- **DNS**: Cloudflare nameservers
+
+### Migration Notes
+- **Migrated**: January 12, 2026 (completed)
+- **Reason**: Storage requirements (249GB audio library) + cost savings
+- **Previous**: DigitalOcean 116GB disk @ $48/mo
+- **Current**: Hetzner CPX31 + 100GB volume @ $30/mo
+- **Savings**: $18/month ($216/year)
+- **Data Migrated**: 112GB audio library (12,670 files) + analysis data
 
 ### Deployment
 ```bash
 # Deploy from local machine
-./scripts/deploy-digitalocean.sh
+./scripts/deploy-hetzner.sh
 ```
 
 ### Server Management (SSH)
@@ -251,10 +302,15 @@ The server `.env.local` uses the cloud server redirect URI.
 
 The server hosts your actual audio files for mix generation (separate from Spotify playlist generation).
 
+**IMPORTANT**: Audio mix generation (`/api/generate-mix`) can **ONLY** use files stored on this server. It does NOT use Spotify/Apple Music tracks.
+
 ### Overview
-- **Location**: `/var/www/notorious-dad/audio-library/`
-- **Capacity**: ~9,400 files (under 20MB each)
-- **Analysis**: BPM detection via aubio, key detection via keyfinder-cli
+- **Location**: `/var/www/notorious-dad/audio-library/` (on Hetzner server)
+- **Current**: 12,669 files migrated (111GB)
+- **In Progress**: Uploading to ~26,237 files (90% of MIK library)
+- **Size Limit**: Under 20MB per file (excludes 2,728 files = 9.4% of library)
+- **Storage**: 100GB volume with 149GB free (can expand to all 28,965 files if needed)
+- **Analysis**: BPM detection via aubio, key detection via MIK tags + keyfinder-cli
 - **Data**: `/var/www/notorious-dad/data/audio-library-analysis.json`
 
 ### Uploading Audio Files
@@ -262,7 +318,12 @@ The server hosts your actual audio files for mix generation (separate from Spoti
 # From local machine - uploads MIK-analyzed files under 20MB
 rsync -avz --progress --max-size=20M \
   "/Users/tombragg/Library/Mobile Documents/com~apple~CloudDocs/DJ Music/2-MIK-Analyzed/" \
-  root@129.212.248.171:/var/www/notorious-dad/audio-library/
+  root@178.156.214.56:/var/www/notorious-dad/audio-library/
+
+# To upload ALL files (remove size limit) - needs sufficient storage
+rsync -avz --progress \
+  "/Users/tombragg/Library/Mobile Documents/com~apple~CloudDocs/DJ Music/2-MIK-Analyzed/" \
+  root@178.156.214.56:/var/www/notorious-dad/audio-library/
 ```
 
 ### Server-Side Scripts
@@ -405,11 +466,12 @@ All platforms use **semantic versioning** (MAJOR.MINOR.PATCH):
 
 | Platform | Version | Location | Display |
 |----------|---------|----------|---------|
-| **Web App** | 2.1.0 | `package.json` | Footer on main page |
-| **iOS App** | 2.1.0 | `Info.plist` | Settings → About → Version |
-| **macOS App** | 2.1.0 | `Info.plist` | Settings → About → Version |
+| **Web App** | 2.2.0 | `package.json` | Footer on main page |
+| **iOS App** | 2.2.0 | `Info.plist` | Settings → About → Version |
+| **macOS App** | 2.2.0 | `Info.plist` | Settings → About → Version |
 
 **Version History:**
+- **2.2.0** (2026-01-08): Electric Gold UI redesign - dark mode, larger touch targets, stepped flows, haptic feedback, prompt templates, error recovery with retry, mix duration slider
 - **2.1.0** (2026-01-07): Added streaming audio player + Mix Generator UI
 - **2.0.0** (2026-01-01): Deterministic selection architecture
 - **1.0.0** (2025-12-28): Initial MIK + Spotify integration
@@ -423,6 +485,24 @@ When incrementing versions, update all three files:
 
 | Date | Change |
 |------|--------|
+| Jan 8, 2026 | Added SpotifyPlaybackManager for deep link playback (opens playlists in Spotify app) |
+| Jan 8, 2026 | Added server-side user APIs (`/api/user/templates`, `/api/user/history`) for cross-device sync |
+| Jan 8, 2026 | Added HistoryManager for tracking generation history (syncs to server) |
+| Jan 8, 2026 | Replaced CloudKit with DigitalOcean server-side storage (architectural consistency) |
+| Jan 8, 2026 | Added background refresh with BGTaskScheduler (auto-refresh every 6h) |
+| Jan 8, 2026 | Added DJ filters: Key (Camelot wheel) and BPM range with genre presets |
+| Jan 8, 2026 | Added CacheManager for offline library access (~50ms startup vs ~2s) |
+| Jan 8, 2026 | Added mix duration slider (presets + custom 8-60 tracks) |
+| Jan 8, 2026 | Added NetworkManager with exponential backoff retry logic |
+| Jan 8, 2026 | Added error recovery UI with retry buttons for retryable errors |
+| Jan 8, 2026 | Added HapticManager for consistent iOS haptic feedback |
+| Jan 8, 2026 | Added PromptTemplate system with save/load/delete and 4 default templates |
+| Jan 8, 2026 | Applied Electric Gold theme to macOS app |
+| Jan 8, 2026 | **v2.2.0**: Complete UI/UX redesign with Electric Gold theme |
+| Jan 8, 2026 | Deployed iOS app to TestFlight (v2.2.0 build 4) |
+| Jan 8, 2026 | Added AppTheme design system (colors, typography, spacing, animations) |
+| Jan 8, 2026 | Redesigned all views: GenerateView, MixGeneratorView, LibraryView, SettingsView |
+| Jan 8, 2026 | New app icon: vinyl record with gold label and waveform accent |
 | Jan 7, 2026 | Deployed iOS app to TestFlight (v2.1.0 build 2) |
 | Jan 7, 2026 | Synced MIK library: 6,996 tracks (70% match rate from 9,933 MIK files) |
 | Jan 7, 2026 | Fixed DigitalOcean deployment to include matched-tracks.json |
@@ -450,8 +530,45 @@ Both native apps use the same architecture and authentication pattern.
 1. **Playlist Generation** - Create Spotify playlists from natural language prompts
 2. **Mix Generation** - Generate audio mixes from your uploaded library (server-side)
    - Style presets: Beach Day, Workout, Dinner Party, Late Night, Road Trip, House Party
-   - Duration options: 30min, 1hr, 2hr
+   - Duration: Presets (30min, 1hr, 2hr) + custom slider (8-60 tracks)
    - Auto-discovers server at `mixmaster.mixtape.run`
+   - **NEW (v2.2.0 Build 6):** Spotify playlist integration - paste playlist URL to generate mix from those tracks
+3. **Prompt Templates** - Save and load favorite prompt configurations
+   - 4 default templates: Workout, Dinner Party, House Party, Sunset Session
+   - Save current settings as new templates
+   - Long-press to delete custom templates
+4. **Error Recovery** - Smart retry with exponential backoff
+   - Automatic retry for network/timeout errors (3 attempts)
+   - Manual retry button for user-initiated recovery
+   - Non-retryable errors (auth, invalid input) skip retry
+5. **Haptic Feedback** - Consistent tactile feedback throughout
+   - Light taps for selections/toggles
+   - Medium taps for button presses
+   - Success/error notifications for generation results
+6. **Offline Cache** - Instant startup with cached library
+   - Tracks cached to disk for offline access
+   - ~50ms load time vs ~2s from bundle
+   - Auto-refresh when cache is >24h old
+7. **DJ Filters** - Filter library by Key and BPM
+   - Camelot wheel key selection (1A-12A, 1B-12B)
+   - BPM range slider with genre presets (House/Techno/D&B)
+   - Active filter pills with quick-remove
+8. **Background Refresh** - Keep library up to date
+   - BGTaskScheduler for iOS background refresh
+   - Automatic refresh every 6 hours when app is backgrounded
+   - Refresh on app activation if cache is stale
+9. **Background Audio Playback** - **NEW (v2.2.0 Build 6)**
+   - Music continues when app is backgrounded or screen locked
+   - Lock screen controls (play/pause, skip)
+   - Support for AirPlay and Bluetooth audio
+10. **Background Mix Generation** - **NEW (v2.2.0 Build 6)**
+    - Mix generation continues in background (~3-5 min for 1-hour mix)
+    - Push notification when complete
+    - Extended timeout (20 minutes) for long mixes
+11. **Expandable Tracklist** - **NEW (v2.2.0 Build 6)**
+    - Tap "+ X more tracks" to see full tracklist
+    - View all tracks with BPM and key info
+    - Useful for DJ reference and harmonic mixing
 
 ### Authentication Solution (2026-01-03)
 
@@ -477,6 +594,9 @@ Native SwiftUI app located in `NotoriousDAD-iOS/` directory.
 
 **Key Files**:
 - `NotoriousDAD-iOS/NotoriousDAD/Services/SpotifyManager.swift` - Spotify auth management
+- `NotoriousDAD-iOS/NotoriousDAD/Services/SpotifyPlaybackManager.swift` - Deep link playback (opens Spotify app)
+- `NotoriousDAD-iOS/NotoriousDAD/Services/TemplateManager` - Prompt templates (syncs to server)
+- `NotoriousDAD-iOS/NotoriousDAD/Services/HistoryManager` - Generation history (syncs to server)
 - `NotoriousDAD-iOS/NotoriousDAD/Views/ContentView.swift` - Main UI and API calls
 - `NotoriousDAD-iOS/NotoriousDAD/Resources/spotify-tokens.json` - Bundled refresh token
 
@@ -517,10 +637,39 @@ Both apps include a bundled `spotify-tokens.json` with refresh_token. To update:
 
 **Note**: Spotify refresh tokens don't expire unless revoked by the user.
 
+### Electric Gold Design System (v2.2.0)
+
+The iOS app uses a custom design system defined in `AppTheme.swift`:
+
+**Color Palette:**
+| Token | Value | Usage |
+|-------|-------|-------|
+| `gold` | #FFD700 | Primary accent, buttons, selected states |
+| `goldDeep` | #D9A522 | Gradient endpoints, hover states |
+| `background` | #0F0F14 | Main screen background |
+| `surface` | #1A1A1E | Cards, list items |
+| `surfaceElevated` | #242428 | Modals, elevated cards |
+| `textPrimary` | #FFFFFF | Headings, primary text |
+| `textSecondary` | #A6A6A6 | Captions, metadata |
+| `accentCyan` | #33CCEE | MIK data indicators |
+| `accentPink` | #FF6699 | Apple Music indicators |
+
+**Typography:** System rounded fonts (SF Pro Rounded) for friendly, modern feel.
+
+**Spacing Scale:** `xxs(4)`, `xs(8)`, `sm(12)`, `md(16)`, `lg(24)`, `xl(32)`, `xxl(48)`
+
+**Touch Targets:** Minimum 60pt height for all interactive elements.
+
+**Key Components:**
+- `PrimaryButtonStyle` - Gold gradient with press animation
+- `SecondaryButtonStyle` - Gold outline with translucent fill
+- `CardStyle` - Surface background with rounded corners
+- `GoldGradient` - Reusable gold gradient modifier
+
 ### TestFlight Deployment
 
-**Status:** iOS app deployed to TestFlight (Jan 7, 2026)
-- **Version:** 2.1.0 (Build 2)
+**Status:** iOS app deployed to TestFlight (Jan 8, 2026)
+- **Version:** 2.2.0 (Build 4)
 - **Platform:** iOS (iPhone/iPad)
 - **Access:** Internal testing (up to 100 testers)
 
