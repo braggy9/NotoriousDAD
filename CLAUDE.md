@@ -465,15 +465,17 @@ vercel logs dj-mix-generator.vercel.app --since 5m
 
 All platforms use **semantic versioning** (MAJOR.MINOR.PATCH):
 
-| Platform | Version | Location | Display |
-|----------|---------|----------|---------|
-| **Web App** | 2.2.0 | `package.json` | Footer on main page |
-| **iOS App** | 2.2.0 | `Info.plist` | Settings → About → Version |
-| **macOS App** | 2.2.0 | `Info.plist` | Settings → About → Version |
+| Platform | Version | Build | Location | Display |
+|----------|---------|-------|----------|---------|
+| **Web App** | 2.2.0 | N/A | `package.json` | Footer on main page |
+| **iOS App** | 2.2.0 | **10** | `Info.plist` CFBundleVersion | Settings → About → Version |
+| **macOS App** | 2.2.0 | **10** | `Info.plist` CFBundleVersion | Settings → About → Version |
 
 **Version History:**
-- **2.2.0** (2026-01-08): Electric Gold UI redesign - dark mode, larger touch targets, stepped flows, haptic feedback, prompt templates, error recovery with retry, mix duration slider
-- **2.1.0** (2026-01-07): Added streaming audio player + Mix Generator UI
+- **2.2.0 Build 10** (2026-01-16): Fixed enhanced database integration (9,982 tracks), view title clarity, NotoriousDADKit Track model
+- **2.2.0 Build 9** (2026-01-14): Mix duration fix, tab naming updates, Hetzner endpoint integration
+- **2.2.0 Build 4** (2026-01-08): Electric Gold UI redesign - dark mode, larger touch targets, stepped flows, haptic feedback, prompt templates, error recovery with retry, mix duration slider
+- **2.1.0 Build 2** (2026-01-07): Added streaming audio player + Mix Generator UI
 - **2.0.0** (2026-01-01): Deterministic selection architecture
 - **1.0.0** (2025-12-28): Initial MIK + Spotify integration
 
@@ -486,6 +488,11 @@ When incrementing versions, update all three files:
 
 | Date | Change |
 |------|--------|
+| Jan 16, 2026 | **Build 10**: Fixed LibraryManager to load enhanced-track-database.json (9,982 tracks) |
+| Jan 16, 2026 | Updated iOS/macOS apps with NotoriousDADKit Track model integration |
+| Jan 16, 2026 | Fixed view titles: "Create Mix" → "Generate Playlist", "Audio Mix" → "Mix" |
+| Jan 16, 2026 | Bundled enhanced track database in iOS/macOS apps for offline use |
+| Jan 16, 2026 | Fixed duplicate ThemedTextField error in consolidated ContentView.swift |
 | Jan 8, 2026 | Added SpotifyPlaybackManager for deep link playback (opens playlists in Spotify app) |
 | Jan 8, 2026 | Added server-side user APIs (`/api/user/templates`, `/api/user/history`) for cross-device sync |
 | Jan 8, 2026 | Added HistoryManager for tracking generation history (syncs to server) |
@@ -523,9 +530,75 @@ When incrementing versions, update all three files:
 | Dec 31, 2025 | Added Spotify catalog search for Include artists |
 | Dec 28, 2025 | Initial MIK + Spotify integration |
 
+## NotoriousDADKit (Swift Package)
+
+Located at `/Users/tombragg/dj-mix-generator/NotoriousDADKit` - a local Swift Package that provides shared models and logic for iOS/macOS apps.
+
+**Purpose**: Centralize core data structures and business logic to maintain consistency across platforms.
+
+**Key Components**:
+
+**Models** (`Sources/NotoriousDADKit/Models/`):
+- `Track.swift` - Main track model with all metadata (Spotify ID, MIK data, audio features)
+- `Constraints.swift` - Playlist generation constraints (BPM range, energy, mood)
+- `Playlist.swift` - Playlist metadata and track collections
+
+**Track Model Structure**:
+```swift
+public struct Track: Identifiable, Codable, Sendable {
+    public let id: String             // Spotify ID
+    public let uri: String            // Spotify URI
+    public let name: String
+    public let artists: [String]
+    public let album: String
+    public let durationMs: Int
+    public let popularity: Int?       // 0-100
+    public var source: TrackSource    // .mikLibrary, .spotifyLibrary, etc.
+    public var mikData: MIKData?      // MIK analysis (key, BPM, energy)
+    public var audioFeatures: AudioFeatures?  // Spotify features
+    public var camelotKey: String?
+    public var appleMusicPlayCount: Int
+    public var selectionScore: Double
+}
+```
+
+**MIK Data**:
+```swift
+public struct MIKData: Codable, Sendable {
+    public let key: String?      // Camelot key (e.g., "8A", "11B")
+    public let bpm: Double?
+    public let energy: Int?      // 1-10 scale
+    public let cuePoints: [Double]?
+}
+```
+
+**Track Sources**:
+```swift
+public enum TrackSource: String, Codable {
+    case mikLibrary        // MIK-analyzed files
+    case appleMusic        // Apple Music matches
+    case spotifySearch     // Spotify catalog search
+    case spotifyLibrary    // User's Spotify library
+    case recommendations   // Spotify recommendations
+}
+```
+
+**Camelot Wheel** (`Sources/NotoriousDADKit/Camelot/`):
+- Harmonic mixing compatibility calculations
+- Key transition analysis for DJ mixing
+
+**Selection Engine** (`Sources/NotoriousDADKit/Selection/`):
+- Track selection algorithms
+- Harmonic optimization for smooth transitions
+
+**Integration**:
+- iOS app: `import NotoriousDADKit` in LibraryManager, SpotifyManager
+- macOS app: Same shared package via Xcode local package reference
+- Ensures model consistency between platforms
+
 ## iOS/macOS Native Apps
 
-Both native apps use the same architecture and authentication pattern.
+Both native apps use the same architecture and authentication pattern, sharing models via NotoriousDADKit.
 
 ### Features
 1. **Playlist Generation** - Create Spotify playlists from natural language prompts
@@ -669,10 +742,15 @@ The iOS app uses a custom design system defined in `AppTheme.swift`:
 
 ### TestFlight Deployment
 
-**Status:** iOS app deployed to TestFlight (Jan 8, 2026)
-- **Version:** 2.2.0 (Build 4)
+**Latest:** iOS Build 10 (Jan 16, 2026)
+- **Version:** 2.2.0 (Build 10)
 - **Platform:** iOS (iPhone/iPad)
 - **Access:** Internal testing (up to 100 testers)
+- **Changes:** Enhanced database (9,982 tracks), fixed view titles, NotoriousDADKit integration
+
+**Previous Builds:**
+- Build 9: Tab naming fixes, Hetzner endpoint
+- Build 4: Electric Gold UI redesign
 
 **TestFlight Process:**
 1. Archive app in Xcode (Product → Archive)
@@ -728,7 +806,35 @@ The iOS app uses a custom design system defined in `AppTheme.swift`:
 - Tab 1: ~~"Audio Mix"~~ → **"Mix"** (Downloadable MP3 files, server files only)
 - Tab 2: ~~"Library"~~ → **"Tracks"** (Browse your track library)
 
-**Deployment**: Build 9 on TestFlight
+**Deployment**: Build 10 on TestFlight (2026-01-16)
+
+### ✅ FIXED: iOS App Track Database Issues (2026-01-16)
+
+**Issue**: Build 9 showed incorrect track counts and view titles:
+- Track count: 6,886 (should be 9,982)
+- MIK tracks: 8,176 (should be ~9,792)
+- Tab 0 title: "Create Mix" (should be "Generate Playlist")
+- Tab 1 title: "Audio Mix" (should be "Mix")
+
+**Root Causes**:
+1. Old `matched-tracks.json` bundled instead of `enhanced-track-database.json`
+2. LibraryManager using incompatible parser for new database format
+3. View titles not updated in ContentView.swift
+4. NotoriousDADKit Track model parameters mismatched
+
+**Fix Applied** (Build 10):
+1. Bundled `enhanced-track-database.json` (9,982 tracks) in iOS/macOS apps
+2. Updated LibraryManager.parseEnhancedTracks() to use NotoriousDADKit.Track model
+3. Fixed view titles throughout ContentView.swift
+4. Properly mapped energy scale (0.0-1.0 → 0-10) and TrackSource enums
+
+**Build 10 Changes**:
+- iOS: CFBundleVersion 9 → 10
+- macOS: CFBundleVersion 9 → 10
+- Enhanced database parser with proper Track/MIKData/TrackSource types
+- All view titles updated for clarity
+
+**Deployment**: Build 10 on TestFlight (2026-01-16)
 
 ### GitHub Push Blocked (Large Files in History)
 

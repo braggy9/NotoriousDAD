@@ -358,26 +358,33 @@ class LibraryManager: ObservableObject {
                 continue
             }
 
+            let album = trackData["album"] as? String ?? ""
+            let durationMs = trackData["durationMs"] as? Int ?? 0
+            let popularity = trackData["popularity"] as? Int
+
+            // Build MIK data if available
+            var mikData: MIKData? = nil
+            if let bpm = trackData["bpm"] as? Double,
+               let key = trackData["key"] as? String,
+               let energyDouble = trackData["energy"] as? Double {
+                let energy = Int(energyDouble * 10) // Convert 0.0-1.0 to 0-10 scale
+                mikData = MIKData(key: key, bpm: bpm, energy: energy)
+            }
+
+            // Determine source
+            let source: TrackSource = (trackData["source"] as? String) == "mik-only" ? .mikLibrary : .spotifyLibrary
+
             let track = DADTrack(
                 id: id,
-                spotifyId: trackData["spotifyId"] as? String,
+                uri: trackData["spotifyUri"] as? String ?? "spotify:track:\(id)",
                 name: name,
-                artist: artist,
-                album: trackData["album"] as? String,
-                bpm: trackData["bpm"] as? Double,
-                key: trackData["key"] as? String,
-                camelotKey: trackData["camelotKey"] as? String,
-                energy: trackData["energy"] as? Double,
-                danceability: trackData["danceability"] as? Double,
-                valence: trackData["valence"] as? Double,
-                acousticness: trackData["acousticness"] as? Double,
-                instrumentalness: trackData["instrumentalness"] as? Double,
-                mode: nil,
-                genre: trackData["genre"] as? String,
-                popularity: trackData["popularity"] as? Int,
-                durationMs: trackData["durationMs"] as? Int,
-                appleMusicPlayCount: trackData["appleMusicPlayCount"] as? Int,
-                source: (trackData["source"] as? String) == "mik-only" ? .mikLibrary : .spotify
+                artists: [artist],
+                album: album,
+                durationMs: durationMs,
+                popularity: popularity,
+                source: source,
+                mikData: mikData,
+                camelotKey: trackData["camelotKey"] as? String
             )
 
             tracks.append(track)
