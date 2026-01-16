@@ -2,9 +2,33 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 📌 Primary Reference
+
+**GitHub Repository**: https://github.com/braggy9/dj-mix-generator
+
+**Quick Start for New Sessions**:
+```
+Read project documentation from GitHub:
+https://github.com/braggy9/dj-mix-generator/blob/main/CLAUDE.md
+or local path: /Users/tombragg/dj-mix-generator/CLAUDE.md
+```
+
+**Repository Status** (Updated Jan 16, 2026):
+- ✅ 22+ commits pushed successfully
+- ✅ Build 10 changes included (iOS/macOS apps)
+- ✅ Repository size: 317MB (cleaned)
+- ✅ No large files in history
+- ✅ Enhanced track database (9,982 tracks)
+
 ## Project Overview
 
 **Notorious DAD** - A DJ mix generator that creates seamless, beatmatched playlists using your personal music library (MIK + Apple Music) with professional harmonic mixing. Designed for djay Pro automix.
+
+### Related Projects
+- **[Spotify Library Downloader](https://github.com/braggy9/spotify-library-downloader)** - Audio library management and MIK sync
+  - Downloads tracks via YouTube (yt-dlp)
+  - Mixed In Key analysis integration
+  - Syncs MIK data to this project via `npm run sync-mix-generator`
 
 ## Development Commands
 
@@ -228,6 +252,46 @@ SPOTIFY_REDIRECT_URI=https://dj-mix-generator.vercel.app/api/auth/callback
 ANTHROPIC_API_KEY=...
 OPENAI_API_KEY=...
 ```
+
+## 🌐 Digital Infrastructure (Three-Layer Architecture)
+
+All three layers are active and connected:
+
+### 1. GitHub (Source Code) ✅
+- **Repository**: https://github.com/braggy9/dj-mix-generator
+- **Status**: 22+ commits, clean history, no large files
+- **Size**: 317MB (cleaned from ~800MB+)
+- **Branch**: main
+- **Includes**: All Build 10 changes, enhanced database, full documentation
+
+### 2. Hetzner (Production Server) ✅
+- **Primary URL**: https://mixmaster.mixtape.run/
+- **Audio Library**: 14,382 files (141GB, growing to 26,237)
+- **Track Database**: 9,982 tracks with full metadata
+- **Purpose**: Audio mix generation, API backend
+- **Stack**: Node.js 22, PM2, nginx, FFmpeg, aubio
+
+### 3. Vercel (Web App) ⏳ Auto-Deploy
+- **URL**: https://dj-mix-generator.vercel.app/
+- **Status**: Auto-deploys from GitHub on code changes
+- **Purpose**: Web interface for playlist generation
+- **Deployment**: Automatic via GitHub integration
+
+### 4. TestFlight (iOS App) 📱
+- **Version**: 2.2.0 (Build 10)
+- **Platform**: iOS (iPhone/iPad)
+- **Status**: Live for internal testing
+- **Features**: Playlist generation, audio mix generation, Spotify playlist integration
+
+### 5. macOS App 💻
+- **Version**: 2.2.0 (Build 10)
+- **Platform**: macOS
+- **Status**: Local builds available
+- **Features**: Same as iOS app
+
+**Everything is connected and ready to share!**
+
+---
 
 ## Hetzner Cloud Deployment
 
