@@ -1771,6 +1771,395 @@ struct ShareSheet: UIViewControllerRepresentable {
 
 // MARK: - Server Discovery
 
+// MARK: - Mashup Finder View
+
+struct MashupFinderViewRedesign: View {
+    @StateObject private var mashupManager = MashupManager.shared
+    @EnvironmentObject var libraryManager: LibraryManager
+    @State private var selectedMode: MashupMode = .browse
+    @State private var searchQuery = ""
+    @State private var minCompatibility = 75
+    @State private var searchedTrackId: String?
+
+    enum MashupMode {
+        case browse  // Browse top mashup pairs
+        case search  // Search for partner for specific track
+    }
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AppTheme.Colors.background.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: AppTheme.Spacing.lg) {
+                        // Header
+                        VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                            Text("Mashup Finder")
+                                .font(AppTheme.Typography.largeTitle)
+                                .foregroundColor(AppTheme.Colors.textPrimary)
+                                .modifier(GoldGradient())
+
+                            Text("Find compatible track pairs for simultaneous playback")
+                                .font(AppTheme.Typography.subheadline)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, AppTheme.Spacing.md)
+                        .padding(.top, AppTheme.Spacing.md)
+
+                        // Mode Selector
+                        Picker("Mode", selection: $selectedMode) {
+                            Text("Browse Top Pairs").tag(MashupMode.browse)
+                            Text("Find Partner").tag(MashupMode.search)
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .padding(.horizontal, AppTheme.Spacing.md)
+
+                        if selectedMode == .browse {
+                            browseModeView
+                        } else {
+                            searchModeView
+                        }
+                    }
+                    .padding(.bottom, AppTheme.Spacing.xl)
+                }
+            }
+            .navigationBarHidden(true)
+        }
+    }
+
+    // MARK: - Browse Mode (Top Mashup Pairs)
+
+    private var browseModeView: some View {
+        VStack(spacing: AppTheme.Spacing.md) {
+            // Compatibility Filter
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                HStack {
+                    Text("Min Compatibility")
+                        .font(AppTheme.Typography.callout)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+                    Spacer()
+                    Text("\(minCompatibility)%")
+                        .font(AppTheme.Typography.headline)
+                        .foregroundColor(AppTheme.Colors.gold)
+                }
+
+                Slider(value: Binding(
+                    get: { Double(minCompatibility) },
+                    set: { minCompatibility = Int($0) }
+                ), in: 70...95, step: 5)
+                    .tint(AppTheme.Colors.gold)
+            }
+            .modifier(CardStyle())
+            .padding(.horizontal, AppTheme.Spacing.md)
+
+            // Load Button
+            Button(action: {
+                Task {
+                    await mashupManager.findMashupPairs(minScore: minCompatibility)
+                }
+            }) {
+                HStack {
+                    if mashupManager.isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        Image(systemName: "waveform.path.ecg")
+                    }
+                    Text(mashupManager.isLoading ? "Analyzing..." : "Find Mashups")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(PrimaryButtonStyle(isDisabled: mashupManager.isLoading))
+            .disabled(mashupManager.isLoading)
+            .padding(.horizontal, AppTheme.Spacing.md)
+
+            // Summary Stats
+            if let summary = mashupManager.summary {
+                summaryStatsView(summary: summary)
+            }
+
+            // Results
+            if !mashupManager.mashupPairs.isEmpty {
+                mashupPairsListView
+            }
+
+            // Error Message
+            if let error = mashupManager.errorMessage {
+                Text(error)
+                    .font(AppTheme.Typography.callout)
+                    .foregroundColor(AppTheme.Colors.error)
+                    .modifier(CardStyle())
+                    .padding(.horizontal, AppTheme.Spacing.md)
+            }
+        }
+    }
+
+    // MARK: - Search Mode (Find Partner)
+
+    private var searchModeView: some View {
+        VStack(spacing: AppTheme.Spacing.md) {
+            // Track Search
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+                Text("Search for a track")
+                    .font(AppTheme.Typography.callout)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
+
+                TextField("Track name or artist", text: $searchQuery)
+                    .padding()
+                    .background(AppTheme.Colors.surfaceElevated)
+                    .cornerRadius(AppTheme.Radius.md)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
+            }
+            .modifier(CardStyle())
+            .padding(.horizontal, AppTheme.Spacing.md)
+
+            // Filtered Track Results
+            if !searchQuery.isEmpty {
+                filteredTracksView
+            }
+
+            // Best Partner Result
+            if let partner = mashupManager.bestPartner {
+                bestPartnerView(partner: partner)
+            }
+
+            // Error Message
+            if let error = mashupManager.errorMessage {
+                Text(error)
+                    .font(AppTheme.Typography.callout)
+                    .foregroundColor(AppTheme.Colors.error)
+                    .modifier(CardStyle())
+                    .padding(.horizontal, AppTheme.Spacing.md)
+            }
+        }
+    }
+
+    // MARK: - Summary Stats
+
+    private func summaryStatsView(summary: MashupSummary) -> some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            if let easy = summary.easyPairs {
+                statPill(label: "Easy", value: "\(easy)", color: AppTheme.Colors.success)
+            }
+            if let medium = summary.mediumPairs {
+                statPill(label: "Medium", value: "\(medium)", color: AppTheme.Colors.warning)
+            }
+            if let hard = summary.hardPairs {
+                statPill(label: "Hard", value: "\(hard)", color: AppTheme.Colors.error)
+            }
+        }
+        .padding(.horizontal, AppTheme.Spacing.md)
+    }
+
+    private func statPill(label: String, value: String, color: Color) -> some View {
+        VStack(spacing: AppTheme.Spacing.xxs) {
+            Text(value)
+                .font(AppTheme.Typography.title2)
+                .fontWeight(.bold)
+                .foregroundColor(color)
+            Text(label)
+                .font(AppTheme.Typography.caption)
+                .foregroundColor(AppTheme.Colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, AppTheme.Spacing.sm)
+        .background(AppTheme.Colors.surface)
+        .cornerRadius(AppTheme.Radius.md)
+    }
+
+    // MARK: - Mashup Pairs List
+
+    private var mashupPairsListView: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            Text("Top Mashup Opportunities")
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+                .padding(.horizontal, AppTheme.Spacing.md)
+
+            ForEach(mashupManager.mashupPairs.prefix(20)) { pair in
+                mashupPairCard(pair: pair)
+            }
+        }
+    }
+
+    private func mashupPairCard(pair: MashupPair) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            // Compatibility Score
+            HStack {
+                Text("\(Int(pair.compatibility.overallScore))%")
+                    .font(AppTheme.Typography.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(difficultyColor(pair.compatibility.difficulty))
+
+                Text(pair.compatibility.difficulty.uppercased())
+                    .font(AppTheme.Typography.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(difficultyColor(pair.compatibility.difficulty))
+                    .padding(.horizontal, AppTheme.Spacing.xs)
+                    .padding(.vertical, AppTheme.Spacing.xxs)
+                    .background(difficultyColor(pair.compatibility.difficulty).opacity(0.2))
+                    .cornerRadius(AppTheme.Radius.sm)
+
+                Spacer()
+
+                // Key Badge
+                Text(pair.track1.camelotKey)
+                    .font(AppTheme.Typography.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(AppTheme.Colors.accentCyan)
+                    .padding(.horizontal, AppTheme.Spacing.xs)
+                    .padding(.vertical, AppTheme.Spacing.xxs)
+                    .background(AppTheme.Colors.accentCyan.opacity(0.2))
+                    .cornerRadius(AppTheme.Radius.sm)
+            }
+
+            // Track 1
+            trackRow(track: pair.track1, icon: "1.circle.fill")
+
+            // Mix Icon
+            HStack {
+                Spacer()
+                Image(systemName: "waveform.path.badge.plus")
+                    .foregroundColor(AppTheme.Colors.gold)
+                    .font(.system(size: 14))
+                Spacer()
+            }
+
+            // Track 2
+            trackRow(track: pair.track2, icon: "2.circle.fill")
+
+            // Mixing Notes (Collapsed by default, expand on tap)
+            if !pair.mixingNotes.isEmpty {
+                DisclosureGroup("Mixing Notes") {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                        ForEach(pair.mixingNotes, id: \.self) { note in
+                            HStack(alignment: .top, spacing: AppTheme.Spacing.xs) {
+                                Text("•")
+                                    .foregroundColor(AppTheme.Colors.gold)
+                                Text(note)
+                                    .font(AppTheme.Typography.caption)
+                                    .foregroundColor(AppTheme.Colors.textSecondary)
+                            }
+                        }
+                    }
+                    .padding(.top, AppTheme.Spacing.xs)
+                }
+                .font(AppTheme.Typography.callout)
+                .foregroundColor(AppTheme.Colors.textSecondary)
+                .tint(AppTheme.Colors.gold)
+            }
+        }
+        .modifier(CardStyle())
+        .padding(.horizontal, AppTheme.Spacing.md)
+    }
+
+    private func trackRow(track: MashupTrack, icon: String) -> some View {
+        HStack(spacing: AppTheme.Spacing.xs) {
+            Image(systemName: icon)
+                .foregroundColor(AppTheme.Colors.gold)
+                .font(.system(size: 16))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(track.name)
+                    .font(AppTheme.Typography.callout)
+                    .fontWeight(.medium)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
+                    .lineLimit(1)
+
+                Text(track.artist)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Text("\(Int(track.bpm)) BPM")
+                .font(AppTheme.Typography.caption)
+                .foregroundColor(AppTheme.Colors.textTertiary)
+        }
+    }
+
+    // MARK: - Filtered Tracks (Search Mode)
+
+    private var filteredTracksView: some View {
+        let filtered = libraryManager.tracks.filter { track in
+            let query = searchQuery.lowercased()
+            return track.name.lowercased().contains(query) ||
+                   track.artists.joined(separator: " ").lowercased().contains(query)
+        }
+
+        return VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            Text("Tap a track to find its mashup partner")
+                .font(AppTheme.Typography.caption)
+                .foregroundColor(AppTheme.Colors.textSecondary)
+                .padding(.horizontal, AppTheme.Spacing.md)
+
+            ForEach(filtered.prefix(10)) { track in
+                Button(action: {
+                    searchedTrackId = track.id
+                    Task {
+                        await mashupManager.findBestPartner(for: track.id)
+                    }
+                }) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(track.name)
+                                .font(AppTheme.Typography.callout)
+                                .fontWeight(.medium)
+                                .foregroundColor(AppTheme.Colors.textPrimary)
+                                .lineLimit(1)
+
+                            Text(track.artists.joined(separator: ", "))
+                                .font(AppTheme.Typography.caption)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
+                                .lineLimit(1)
+                        }
+
+                        Spacer()
+
+                        if let mikData = track.mikData {
+                            Text(mikData.key ?? "")
+                                .font(AppTheme.Typography.caption)
+                                .foregroundColor(AppTheme.Colors.accentCyan)
+                        }
+                    }
+                    .padding()
+                    .background(AppTheme.Colors.surface)
+                    .cornerRadius(AppTheme.Radius.md)
+                }
+                .padding(.horizontal, AppTheme.Spacing.md)
+            }
+        }
+    }
+
+    // MARK: - Best Partner View
+
+    private func bestPartnerView(partner: MashupPair) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            Text("Best Mashup Partner")
+                .font(AppTheme.Typography.headline)
+                .foregroundColor(AppTheme.Colors.textPrimary)
+
+            mashupPairCard(pair: partner)
+        }
+        .padding(.top, AppTheme.Spacing.md)
+    }
+
+    // MARK: - Helpers
+
+    private func difficultyColor(_ difficulty: String) -> Color {
+        switch difficulty.lowercased() {
+        case "easy": return AppTheme.Colors.success
+        case "medium": return AppTheme.Colors.warning
+        case "hard": return AppTheme.Colors.error
+        default: return AppTheme.Colors.textSecondary
+        }
+    }
+}
+
 
 // MARK: - Main ContentView (Entry Point)
 
@@ -1793,17 +2182,23 @@ struct ContentView: View {
                 }
                 .tag(1)
 
+            MashupFinderViewRedesign()
+                .tabItem {
+                    Label("Mashups", systemImage: "waveform.path.badge.plus")
+                }
+                .tag(2)
+
             LibraryViewRedesign()
                 .tabItem {
                     Label("Tracks", systemImage: "music.note")
                 }
-                .tag(2)
+                .tag(3)
 
             SettingsViewRedesign()
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }
-                .tag(3)
+                .tag(4)
         }
         .tint(AppTheme.Colors.gold)
         .preferredColorScheme(.dark)

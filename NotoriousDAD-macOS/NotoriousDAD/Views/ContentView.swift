@@ -715,6 +715,313 @@ class HistoryManager: ObservableObject {
     }
 }
 
+// MARK: - Mashup Finder View
+
+struct MashupFinderView: View {
+    @StateObject private var mashupManager = MashupManager.shared
+    @EnvironmentObject var libraryManager: LibraryManager
+    @State private var selectedMode: MashupMode = .browse
+    @State private var searchQuery = ""
+    @State private var minCompatibility = 75
+
+    enum MashupMode {
+        case browse
+        case search
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Header
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Mashup Finder")
+                        .font(AppTheme.Typography.largeTitle)
+                        .foregroundStyle(
+                            LinearGradient(colors: [AppTheme.Colors.gold, AppTheme.Colors.goldDeep], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+
+                    Text("Find compatible track pairs for simultaneous playback")
+                        .font(AppTheme.Typography.subheadline)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+                }
+                .padding(.horizontal)
+
+                // Mode Selector
+                Picker("Mode", selection: $selectedMode) {
+                    Text("Browse Top Pairs").tag(MashupMode.browse)
+                    Text("Find Partner").tag(MashupMode.search)
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding(.horizontal)
+
+                if selectedMode == .browse {
+                    browseModeView
+                } else {
+                    searchModeView
+                }
+            }
+            .padding(.vertical)
+        }
+        .background(AppTheme.Colors.background)
+    }
+
+    private var browseModeView: some View {
+        VStack(spacing: 16) {
+            // Controls
+            HStack {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Min Compatibility: \(minCompatibility)%")
+                        .font(AppTheme.Typography.callout)
+                        .foregroundColor(AppTheme.Colors.textSecondary)
+
+                    Slider(value: Binding(
+                        get: { Double(minCompatibility) },
+                        set: { minCompatibility = Int($0) }
+                    ), in: 70...95, step: 5)
+                        .tint(AppTheme.Colors.gold)
+                }
+
+                Button(action: {
+                    Task {
+                        await mashupManager.findMashupPairs(minScore: minCompatibility)
+                    }
+                }) {
+                    HStack {
+                        if mashupManager.isLoading {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "waveform.path.ecg")
+                        }
+                        Text(mashupManager.isLoading ? "Analyzing..." : "Find Mashups")
+                    }
+                    .frame(width: 160)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(AppTheme.Colors.gold)
+                .disabled(mashupManager.isLoading)
+            }
+            .padding()
+            .background(AppTheme.Colors.surface)
+            .cornerRadius(12)
+            .padding(.horizontal)
+
+            // Summary
+            if let summary = mashupManager.summary {
+                HStack(spacing: 16) {
+                    if let easy = summary.easyPairs {
+                        statBox(label: "Easy", value: "\(easy)", color: AppTheme.Colors.success)
+                    }
+                    if let medium = summary.mediumPairs {
+                        statBox(label: "Medium", value: "\(medium)", color: AppTheme.Colors.warning)
+                    }
+                    if let hard = summary.hardPairs {
+                        statBox(label: "Hard", value: "\(hard)", color: AppTheme.Colors.error)
+                    }
+                }
+                .padding(.horizontal)
+            }
+
+            // Results
+            if !mashupManager.mashupPairs.isEmpty {
+                ForEach(mashupManager.mashupPairs.prefix(20)) { pair in
+                    mashupPairCard(pair: pair)
+                }
+            }
+
+            // Error
+            if let error = mashupManager.errorMessage {
+                Text(error)
+                    .foregroundColor(AppTheme.Colors.error)
+                    .padding()
+                    .background(AppTheme.Colors.surface)
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+            }
+        }
+    }
+
+    private var searchModeView: some View {
+        VStack(spacing: 16) {
+            // Search field
+            TextField("Search for a track...", text: $searchQuery)
+                .textFieldStyle(.roundedBorder)
+                .padding(.horizontal)
+
+            // Results
+            if !searchQuery.isEmpty {
+                let filtered = libraryManager.tracks.filter { track in
+                    let query = searchQuery.lowercased()
+                    return track.name.lowercased().contains(query) ||
+                           track.artists.joined(separator: " ").lowercased().contains(query)
+                }
+
+                ForEach(filtered.prefix(10)) { track in
+                    Button(action: {
+                        Task {
+                            await mashupManager.findBestPartner(for: track.id)
+                        }
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(track.name)
+                                    .font(AppTheme.Typography.callout)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(AppTheme.Colors.textPrimary)
+
+                                Text(track.artists.joined(separator: ", "))
+                                    .font(AppTheme.Typography.caption)
+                                    .foregroundColor(AppTheme.Colors.textSecondary)
+                            }
+                            Spacer()
+                            if let mikData = track.mikData, let key = mikData.key {
+                                Text(key)
+                                    .font(AppTheme.Typography.caption)
+                                    .foregroundColor(AppTheme.Colors.accentCyan)
+                            }
+                        }
+                        .padding()
+                        .background(AppTheme.Colors.surface)
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal)
+                }
+            }
+
+            // Best partner result
+            if let partner = mashupManager.bestPartner {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Best Mashup Partner")
+                        .font(AppTheme.Typography.headline)
+                        .foregroundColor(AppTheme.Colors.textPrimary)
+                        .padding(.horizontal)
+
+                    mashupPairCard(pair: partner)
+                }
+            }
+        }
+    }
+
+    private func statBox(label: String, value: String, color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(AppTheme.Typography.title2)
+                .fontWeight(.bold)
+                .foregroundColor(color)
+            Text(label)
+                .font(AppTheme.Typography.caption)
+                .foregroundColor(AppTheme.Colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(AppTheme.Colors.surface)
+        .cornerRadius(12)
+    }
+
+    private func mashupPairCard(pair: MashupPair) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            HStack {
+                Text("\(Int(pair.compatibility.overallScore))%")
+                    .font(AppTheme.Typography.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(difficultyColor(pair.compatibility.difficulty))
+
+                Text(pair.compatibility.difficulty.uppercased())
+                    .font(AppTheme.Typography.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(difficultyColor(pair.compatibility.difficulty))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(difficultyColor(pair.compatibility.difficulty).opacity(0.2))
+                    .cornerRadius(6)
+
+                Spacer()
+
+                Text(pair.track1.camelotKey)
+                    .font(AppTheme.Typography.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(AppTheme.Colors.accentCyan)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(AppTheme.Colors.accentCyan.opacity(0.2))
+                    .cornerRadius(6)
+            }
+
+            // Tracks
+            trackRow(track: pair.track1, icon: "1.circle.fill")
+
+            HStack {
+                Spacer()
+                Image(systemName: "waveform.path.badge.plus")
+                    .foregroundColor(AppTheme.Colors.gold)
+                Spacer()
+            }
+
+            trackRow(track: pair.track2, icon: "2.circle.fill")
+
+            // Mixing notes
+            if !pair.mixingNotes.isEmpty {
+                DisclosureGroup("Mixing Notes") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(pair.mixingNotes, id: \.self) { note in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text("•")
+                                    .foregroundColor(AppTheme.Colors.gold)
+                                Text(note)
+                                    .font(AppTheme.Typography.caption)
+                                    .foregroundColor(AppTheme.Colors.textSecondary)
+                            }
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+                .font(AppTheme.Typography.callout)
+                .foregroundColor(AppTheme.Colors.textSecondary)
+                .tint(AppTheme.Colors.gold)
+            }
+        }
+        .padding()
+        .background(AppTheme.Colors.surface)
+        .cornerRadius(12)
+        .padding(.horizontal)
+    }
+
+    private func trackRow(track: MashupTrack, icon: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .foregroundColor(AppTheme.Colors.gold)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(track.name)
+                    .font(AppTheme.Typography.callout)
+                    .fontWeight(.medium)
+                    .foregroundColor(AppTheme.Colors.textPrimary)
+
+                Text(track.artist)
+                    .font(AppTheme.Typography.caption)
+                    .foregroundColor(AppTheme.Colors.textSecondary)
+            }
+
+            Spacer()
+
+            Text("\(Int(track.bpm)) BPM")
+                .font(AppTheme.Typography.caption)
+                .foregroundColor(AppTheme.Colors.textTertiary)
+        }
+    }
+
+    private func difficultyColor(_ difficulty: String) -> Color {
+        switch difficulty.lowercased() {
+        case "easy": return AppTheme.Colors.success
+        case "medium": return AppTheme.Colors.warning
+        case "hard": return AppTheme.Colors.error
+        default: return AppTheme.Colors.textSecondary
+        }
+    }
+}
+
 struct ContentView: View {
     @EnvironmentObject var spotifyManager: SpotifyManager
     @EnvironmentObject var libraryManager: LibraryManager
@@ -724,6 +1031,7 @@ struct ContentView: View {
     enum Tab: String, CaseIterable {
         case generate = "Generate"
         case mix = "Audio Mix"
+        case mashups = "Mashups"
         case library = "Library"
         case playlists = "Playlists"
     }
@@ -787,6 +1095,8 @@ struct ContentView: View {
                 GenerateView(showingNewPlaylist: $showingNewPlaylist)
             case .mix:
                 MixGeneratorView()
+            case .mashups:
+                MashupFinderView()
             case .library:
                 LibraryView()
             case .playlists:
@@ -807,6 +1117,7 @@ struct ContentView: View {
         switch tab {
         case .generate: return "wand.and.stars"
         case .mix: return "waveform.path.ecg"
+        case .mashups: return "waveform.path.badge.plus"
         case .library: return "music.note.list"
         case .playlists: return "list.bullet.rectangle"
         }
