@@ -13,19 +13,19 @@ struct ContentViewRedesign: View {
         TabView(selection: $selectedTab) {
             GenerateViewRedesign()
                 .tabItem {
-                    Label("Create", systemImage: "wand.and.stars")
+                    Label("Playlist", systemImage: "music.note.list")
                 }
                 .tag(0)
 
             MixGeneratorViewRedesign()
                 .tabItem {
-                    Label("Audio Mix", systemImage: "waveform.path.ecg")
+                    Label("Mix", systemImage: "waveform.path.ecg")
                 }
                 .tag(1)
 
             LibraryViewRedesign()
                 .tabItem {
-                    Label("Library", systemImage: "music.note.list")
+                    Label("Tracks", systemImage: "music.note")
                 }
                 .tag(2)
 

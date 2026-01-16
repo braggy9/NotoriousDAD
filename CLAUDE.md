@@ -690,6 +690,46 @@ The iOS app uses a custom design system defined in `AppTheme.swift`:
 
 ## Known Issues
 
+### ✅ FIXED: Audio Mix Duration Issue (2026-01-14)
+
+**Issue**: Audio mixes were only 10-11 minutes long instead of requested 1 hour.
+
+**Root Cause**: Server audio library analysis file (`data/audio-library-analysis.json`) had corrupted duration data - all tracks showed `duration: 0.0`.
+
+**Fix Applied**:
+1. Re-analyzed all 4,978 existing tracks with ffprobe
+2. Fixed durations: Average now 247 seconds (4.1 minutes per track)
+3. Added ~8,660 missing tracks from Hetzner volume to analysis file
+4. Total library now: **13,638 tracks** (up from 4,978)
+
+**Expected Mix Durations Now**:
+- 30 min request (12 tracks): ~35-40 min output ✅
+- 1 hour request (20 tracks): ~65-80 min output ✅
+- 2 hour request (40 tracks): ~130-160 min output ✅
+
+**Server**: Hetzner CPX31 + 100GB volume @ `mixmaster.mixtape.run`
+
+### ✅ FIXED: iOS App Library Connection (2026-01-14)
+
+**Issue**: iOS app still pointing to old Vercel endpoint, missing 3,000 tracks.
+
+**Fix**: Updated `LibraryManager.swift:154`:
+- **Old**: `https://dj-mix-generator.vercel.app/api` (6,996 tracks)
+- **New**: `https://mixmaster.mixtape.run/api` (9,982 tracks)
+
+**Deployment**: Will be in Build 9 on TestFlight
+
+### ✅ FIXED: iOS App Tab Naming Confusion (2026-01-14)
+
+**Issue**: Both tabs mentioned "mix" - users couldn't distinguish between Spotify playlist generation vs audio mix generation.
+
+**Fix**: Renamed tabs for clarity:
+- Tab 0: ~~"Create"~~ → **"Playlist"** (Spotify streaming playlists, ~48k tracks)
+- Tab 1: ~~"Audio Mix"~~ → **"Mix"** (Downloadable MP3 files, server files only)
+- Tab 2: ~~"Library"~~ → **"Tracks"** (Browse your track library)
+
+**Deployment**: Build 9 on TestFlight
+
 ### GitHub Push Blocked (Large Files in History)
 
 **Issue:** Cannot push commits to GitHub due to large files in git history:
@@ -697,9 +737,9 @@ The iOS app uses a custom design system defined in `AppTheme.swift`:
 - `NotoriousDAD-macOS/build/SourcePackages/.../pack-*.pack` (71 MB)
 
 **Impact:**
-- ✅ DigitalOcean server has latest code and data (deployed via rsync)
-- ⚠️ Vercel deployment stuck on old version (4,080 tracks vs 6,996)
-- ✅ iOS/macOS apps work fine (use Vercel or DigitalOcean endpoints)
+- ✅ Hetzner server has latest code and data (deployed via rsync)
+- ⚠️ Vercel deployment stuck on old version (6,996 tracks vs 9,982)
+- ✅ iOS/macOS apps work fine (use Hetzner endpoint)
 
 **Solution (when convenient):**
 Use BFG Repo Cleaner or git filter-repo to remove large files from history:
@@ -716,9 +756,9 @@ git push origin main --force
 ```
 
 **Workaround (current):**
-- Use DigitalOcean server (`mixmaster.mixtape.run`) as primary production
+- Use Hetzner server (`mixmaster.mixtape.run`) as primary production
 - Vercel still functional, just with smaller library
-- Update iOS app to use DigitalOcean endpoint for full 6,996-track library
+- iOS app (Build 9+) uses Hetzner endpoint for full 9,982-track library
 
 ---
 

@@ -258,6 +258,9 @@ async function processMixJob(jobId: string, prompt: string, trackCount: number):
           bpm: file.mikData?.bpm || 120,
           camelotKey: file.mikData?.camelotKey || '8A',
           energy: file.mikData?.energy || 5,
+          analysis: {
+            duration: file.durationSeconds || 0,
+          },
         };
 
         // Pass through v3 enhanced mix points if available

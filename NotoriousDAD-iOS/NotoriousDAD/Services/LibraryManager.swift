@@ -150,8 +150,8 @@ class LibraryManager: ObservableObject {
 
     // MARK: - API Configuration
 
-    // For production, load from your web app API
-    private let apiBaseURL = "https://dj-mix-generator.vercel.app/api"
+    // Hetzner production server with full 9,982-track library
+    private let apiBaseURL = "https://mixmaster.mixtape.run/api"
 
     // MARK: - Init
 
@@ -327,6 +327,16 @@ class LibraryManager: ObservableObject {
 
     /// Load MIK data from app bundle
     private func loadBundledMIKData() -> [DADTrack]? {
+        // Try enhanced database first (9,982 tracks - latest format)
+        if let url = Bundle.main.url(forResource: "enhanced-track-database", withExtension: "json"),
+           let data = try? Data(contentsOf: url),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let tracksArray = json["tracks"] as? [[String: Any]] {
+            print("📦 Loading enhanced track database...")
+            return parseEnhancedTracks(tracksArray)
+        }
+
+        // Fallback to old matched-tracks format
         guard let url = Bundle.main.url(forResource: "matched-tracks", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -335,6 +345,45 @@ class LibraryManager: ObservableObject {
         }
 
         return parseSpotifyTracks(tracksArray, source: .mikLibrary)
+    }
+
+    /// Parse tracks from enhanced track database format
+    private func parseEnhancedTracks(_ tracksArray: [[String: Any]]) -> [DADTrack] {
+        var tracks: [DADTrack] = []
+
+        for trackData in tracksArray {
+            guard let id = trackData["id"] as? String,
+                  let name = trackData["name"] as? String,
+                  let artist = trackData["artist"] as? String else {
+                continue
+            }
+
+            let track = DADTrack(
+                id: id,
+                spotifyId: trackData["spotifyId"] as? String,
+                name: name,
+                artist: artist,
+                album: trackData["album"] as? String,
+                bpm: trackData["bpm"] as? Double,
+                key: trackData["key"] as? String,
+                camelotKey: trackData["camelotKey"] as? String,
+                energy: trackData["energy"] as? Double,
+                danceability: trackData["danceability"] as? Double,
+                valence: trackData["valence"] as? Double,
+                acousticness: trackData["acousticness"] as? Double,
+                instrumentalness: trackData["instrumentalness"] as? Double,
+                mode: nil,
+                genre: trackData["genre"] as? String,
+                popularity: trackData["popularity"] as? Int,
+                durationMs: trackData["durationMs"] as? Int,
+                appleMusicPlayCount: trackData["appleMusicPlayCount"] as? Int,
+                source: (trackData["source"] as? String) == "mik-only" ? .mikLibrary : .spotify
+            )
+
+            tracks.append(track)
+        }
+
+        return tracks
     }
 
     /// Load Apple Music data from app bundle

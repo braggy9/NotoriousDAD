@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 
 /// Manages Spotify playback control via the Spotify iOS SDK (SPTAppRemote)
 /// This provides "remote control" of the Spotify app - play, pause, skip, etc.
@@ -74,7 +75,7 @@ class SpotifyPlaybackManager: ObservableObject {
                 UIApplication.shared.open(url) { success in
                     if success {
                         print("✅ Opened Spotify successfully")
-                        HapticManager.shared.success()
+                        // HapticManager.shared.success()
                     } else {
                         print("❌ Failed to open Spotify")
                         // Fall back to web URL
@@ -196,7 +197,7 @@ struct SpotifyPlayButton: View {
     }
 
     private func openInSpotify() {
-        HapticManager.shared.buttonPress()
+        // HapticManager.shared.buttonPress()
 
         // Try to extract playlist ID from URL if not provided directly
         var resolvedPlaylistId = playlistId

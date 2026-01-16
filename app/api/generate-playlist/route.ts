@@ -40,6 +40,10 @@ import {
   generateMixRecipe,
   exportCueSheet,
 } from '@/lib/mix-recipe';
+import {
+  findMashupPairs,
+  type MashupableTrack,
+} from '@/lib/mashup-generator';
 
 const MIK_DATA_PATH = path.join(process.cwd(), 'data', 'matched-tracks.json');
 const APPLE_MUSIC_CHECKPOINT_PATH = path.join(process.cwd(), 'data', 'apple-music-checkpoint.json');
@@ -92,7 +96,9 @@ function inferConstraintsFromArtists(
   includeArtists: string[],
   existingConstraints: any
 ): { bpmRange?: { min: number; max: number }; genres?: string[] } {
-  const allArtists = [...referenceArtists, ...includeArtists].map(a => a.toLowerCase());
+  const allArtists = [...referenceArtists, ...includeArtists]
+    .filter(a => a && typeof a === 'string')
+    .map(a => a.toLowerCase());
   const matchedProfiles: (typeof ARTIST_PROFILES)[string][] = [];
 
   for (const artist of allArtists) {
@@ -558,10 +564,14 @@ export async function POST(request: NextRequest) {
 
     // Build artist sets for matching
     const includeArtists = new Set(
-      (constraints.artists || []).map((a: string) => a.toLowerCase())
+      (constraints.artists || [])
+        .filter((a: any) => a && typeof a === 'string')
+        .map((a: string) => a.toLowerCase())
     );
     const referenceArtists = new Set(
-      (constraints.referenceArtists || []).map((a: string) => a.toLowerCase())
+      (constraints.referenceArtists || [])
+        .filter((a: any) => a && typeof a === 'string')
+        .map((a: string) => a.toLowerCase())
     );
 
     // Infer BPM/genre from reference artists if not explicitly specified
@@ -693,7 +703,7 @@ export async function POST(request: NextRequest) {
       if (includeTracksAdded >= maxIncludeTotal) break;
 
       const artistTracks = rankedTracks.filter(t =>
-        t.artists.some(a => a.name.toLowerCase() === artist)
+        t.artists.some(a => a && a.name && a.name.toLowerCase() === artist)
       );
 
       const toAdd = artistTracks.slice(0, tracksPerIncludeArtist);
@@ -927,6 +937,43 @@ export async function POST(request: NextRequest) {
     // Generate quick cue sheet
     const cueSheet = exportCueSheet(mixRecipe);
 
+    // 🎭 NEW: Find mashup opportunities in the playlist
+    console.log('\n🎭 Analyzing mashup opportunities...');
+    const mashupTracks: MashupableTrack[] = optimizedPlaylist
+      .filter(t => {
+        const hasBPM = t.mikData?.bpm || t.tempo;
+        const hasKey = t.camelotKey;
+        const hasEnergy = t.energy !== undefined;
+        const hasArtist = t.artists?.[0]?.name;
+        return hasBPM && hasKey && hasEnergy && hasArtist;
+      })
+      .map(t => ({
+        id: t.id,
+        name: t.name,
+        artist: t.artists![0]!.name,
+        bpm: t.mikData?.bpm || t.tempo || 120, // Fallback to MIK or Spotify tempo
+        camelotKey: t.camelotKey!,
+        energy: t.energy!,
+        instrumentalness: t.instrumentalness,
+        acousticness: t.acousticness,
+        speechiness: t.speechiness,
+        danceability: t.danceability,
+        valence: t.valence,
+      }));
+
+    const mashupPairs = findMashupPairs(mashupTracks, {
+      minCompatibilityScore: 75, // Good quality mashups
+      maxBPMDifference: 0.06,
+    });
+
+    // Filter to diverse artist pairs only
+    const diverseMashups = mashupPairs.filter(
+      pair => pair.track1.artist !== pair.track2.artist
+    ).slice(0, 10); // Top 10 mashup opportunities
+
+    console.log(`   Found ${mashupPairs.length} total mashup pairs`);
+    console.log(`   Including ${diverseMashups.length} diverse artist mashups`);
+
     const response = NextResponse.json({
       playlistUrl: playlist.external_urls.spotify,
       playlistId: playlist.id,
@@ -951,6 +998,28 @@ export async function POST(request: NextRequest) {
         bpmRange: mixRecipe.bpmRange,
         cueSheet, // Quick reference for DJs
       },
+      // 🎭 NEW: Mashup opportunities
+      mashupOpportunities: diverseMashups.length > 0 ? {
+        count: diverseMashups.length,
+        totalPairs: mashupPairs.length,
+        pairs: diverseMashups.map(pair => ({
+          track1: {
+            name: pair.track1.name,
+            artist: pair.track1.artist,
+            bpm: Math.round(pair.track1.bpm),
+            key: pair.track1.camelotKey,
+          },
+          track2: {
+            name: pair.track2.name,
+            artist: pair.track2.artist,
+            bpm: Math.round(pair.track2.bpm),
+            key: pair.track2.camelotKey,
+          },
+          compatibility: pair.compatibility.overallScore,
+          difficulty: pair.compatibility.difficulty,
+          notes: pair.mixingNotes.slice(0, 3), // Top 3 mixing notes
+        })),
+      } : null,
     });
 
     // Update cookie if token was refreshed

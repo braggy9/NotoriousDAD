@@ -12,11 +12,12 @@
 		B1000001201D00000003 /* SpotifyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000003 /* SpotifyManager.swift */; };
 		B1000001201D00000004 /* LibraryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000004 /* LibraryManager.swift */; };
 		B1000001201D00000005 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000005NM /* NotificationManager.swift */; };
+		B1000001201D00000006 /* AudioPlayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000006 /* AudioPlayerManager.swift */; };
+		B1000001201D00000008 /* SpotifyPlaybackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000008 /* SpotifyPlaybackManager.swift */; };
 		B1000001201D00000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000007 /* Assets.xcassets */; };
 		B1000001201D00000010 /* NotoriousDADKit in Frameworks */ = {isa = PBXBuildFile; productRef = B1000003201D00000010 /* NotoriousDADKit */; };
 		B1000001201D00000011 /* SpotifyAPI in Frameworks */ = {isa = PBXBuildFile; productRef = B1000003201D00000011 /* SpotifyAPI */; };
 		B1000001201D00000020 /* matched-tracks.json in Resources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000020 /* matched-tracks.json */; };
-		B1000001201D00000021 /* apple-music-checkpoint.json in Resources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000021 /* apple-music-checkpoint.json */; };
 		B1000001201D00000022 /* spotify-tokens.json in Resources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000022 /* spotify-tokens.json */; };
 /* End PBXBuildFile section */
 
@@ -27,9 +28,10 @@
 		B1000002201D00000004 /* LibraryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryManager.swift; sourceTree = "<group>"; };
 		B1000002201D00000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1000002201D00000005NM /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		B1000002201D00000006 /* AudioPlayerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerManager.swift; sourceTree = "<group>"; };
+		B1000002201D00000008 /* SpotifyPlaybackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyPlaybackManager.swift; sourceTree = "<group>"; };
 		B1000002201D00000007 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1000002201D00000020 /* matched-tracks.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "matched-tracks.json"; sourceTree = "<group>"; };
-		B1000002201D00000021 /* apple-music-checkpoint.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "apple-music-checkpoint.json"; sourceTree = "<group>"; };
 		B1000002201D00000022 /* spotify-tokens.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "spotify-tokens.json"; sourceTree = "<group>"; };
 		B1000002201D00000099 /* NotoriousDAD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NotoriousDAD.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -80,8 +82,10 @@
 			isa = PBXGroup;
 			children = (
 				B1000002201D00000003 /* SpotifyManager.swift */,
+				B1000002201D00000008 /* SpotifyPlaybackManager.swift */,
 				B1000002201D00000004 /* LibraryManager.swift */,
 				B1000002201D00000005NM /* NotificationManager.swift */,
+				B1000002201D00000006 /* AudioPlayerManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -90,7 +94,6 @@
 			isa = PBXGroup;
 			children = (
 				B1000002201D00000020 /* matched-tracks.json */,
-				B1000002201D00000021 /* apple-music-checkpoint.json */,
 				B1000002201D00000022 /* spotify-tokens.json */,
 			);
 			path = Resources;
@@ -136,7 +139,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					B1000006201D00000001 = {
 						CreatedOnToolsVersion = 15.0;
@@ -172,7 +175,6 @@
 			files = (
 				B1000001201D00000007 /* Assets.xcassets in Resources */,
 				B1000001201D00000020 /* matched-tracks.json in Resources */,
-				B1000001201D00000021 /* apple-music-checkpoint.json in Resources */,
 				B1000001201D00000022 /* spotify-tokens.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -187,8 +189,10 @@
 				B1000001201D00000001 /* NotoriousDADApp.swift in Sources */,
 				B1000001201D00000002 /* ContentView.swift in Sources */,
 				B1000001201D00000003 /* SpotifyManager.swift in Sources */,
+				B1000001201D00000008 /* SpotifyPlaybackManager.swift in Sources */,
 				B1000001201D00000004 /* LibraryManager.swift in Sources */,
 				B1000001201D00000005 /* NotificationManager.swift in Sources */,
+				B1000001201D00000006 /* AudioPlayerManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -230,8 +234,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 89NX9R78Y7;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -252,6 +258,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -292,8 +299,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 89NX9R78Y7;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -307,6 +316,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -318,8 +328,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 89NX9R78Y7;
+				CURRENT_PROJECT_VERSION = 8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NotoriousDAD/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Notorious DAD";
@@ -332,7 +341,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.notoriousdad.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -347,8 +356,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 89NX9R78Y7;
+				CURRENT_PROJECT_VERSION = 8;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NotoriousDAD/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Notorious DAD";
@@ -361,7 +369,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.notoriousdad.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
