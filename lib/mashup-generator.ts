@@ -273,7 +273,7 @@ function generateMixingNotes(
     const instrumental = track1.instrumentalness > track2.instrumentalness ? track1 : track2;
     const vocal = track1.instrumentalness > track2.instrumentalness ? track2 : track1;
 
-    if (instrumental.instrumentalness > 0.7) {
+    if (instrumental.instrumentalness && instrumental.instrumentalness > 0.7) {
       notes.push(`Layer ${vocal.name} vocals over ${instrumental.name} instrumental`);
       notes.push(`Use high-pass filter on ${vocal.name} (cut bass below 250Hz)`);
       notes.push(`Keep ${instrumental.name} at full frequency range for foundation`);

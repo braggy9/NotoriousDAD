@@ -139,13 +139,34 @@ function cloudTrackToIndexed(track: CloudAudioTrack): IndexedAudioFile {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt, trackCount = 6 } = body;
+    const { prompt, trackCount = 6, playlistURL } = body;
 
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json(
         { error: 'Missing or invalid prompt' },
         { status: 400 }
       );
+    }
+
+    // If playlistURL provided, route to playlist-to-mix logic
+    if (playlistURL && typeof playlistURL === 'string' && playlistURL.trim().length > 0) {
+      console.log(`🎧 Generate Mix API (Playlist Mode) - URL: "${playlistURL}", trackCount: ${trackCount}`);
+
+      // Import playlist-to-mix logic
+      const playlistToMixModule = await import('../playlist-to-mix/route');
+
+      // Create new request with playlist data
+      const playlistRequest = new NextRequest(request.url, {
+        method: 'POST',
+        headers: request.headers,
+        body: JSON.stringify({
+          playlistUrl: playlistURL,
+          trackCount,
+        }),
+      });
+
+      // Delegate to playlist-to-mix endpoint
+      return await playlistToMixModule.POST(playlistRequest);
     }
 
     console.log(`🎧 Generate Mix API - Prompt: "${prompt}", trackCount: ${trackCount}`);
