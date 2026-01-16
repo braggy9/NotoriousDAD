@@ -836,35 +836,30 @@ The iOS app uses a custom design system defined in `AppTheme.swift`:
 
 **Deployment**: Build 10 on TestFlight (2026-01-16)
 
-### GitHub Push Blocked (Large Files in History)
+### ✅ FIXED: GitHub Push Unblocked (2026-01-16)
 
-**Issue:** Cannot push commits to GitHub due to large files in git history:
-- `NotoriousDAD-iOS/NotoriousDAD/Resources/apple-music-checkpoint.json` (351 MB)
-- `NotoriousDAD-macOS/build/SourcePackages/.../pack-*.pack` (71 MB)
+**Issue (RESOLVED):** Large files were blocking GitHub push:
+- `apple-music-checkpoint.json.backup` (351 MB)
+- SpotifyAPI pack files (71 MB)
 
-**Impact:**
-- ✅ Hetzner server has latest code and data (deployed via rsync)
-- ⚠️ Vercel deployment stuck on old version (6,996 tracks vs 9,982)
-- ✅ iOS/macOS apps work fine (use Hetzner endpoint)
-
-**Solution (when convenient):**
-Use BFG Repo Cleaner or git filter-repo to remove large files from history:
+**Solution Applied:**
+Used `git-filter-repo` to strip all blobs >50MB from entire git history:
 ```bash
-# Install BFG
-brew install bfg
-
-# Remove large files from history
-bfg --delete-files apple-music-checkpoint.json
-bfg --strip-blobs-bigger-than 50M
-
-# Force push (careful!)
+git filter-repo --strip-blobs-bigger-than 50M --force
 git push origin main --force
 ```
 
-**Workaround (current):**
-- Use Hetzner server (`mixmaster.mixtape.run`) as primary production
-- Vercel still functional, just with smaller library
-- iOS app (Build 9+) uses Hetzner endpoint for full 9,982-track library
+**Current Status:**
+- ✅ GitHub repository: `https://github.com/braggy9/dj-mix-generator.git`
+- ✅ All 21 commits pushed successfully
+- ✅ Repository size: 317MB (cleaned)
+- ✅ No large files remaining in history
+- ✅ Vercel will auto-deploy latest code on next push
+
+**Repository Access:**
+- Public URL: https://github.com/braggy9/dj-mix-generator
+- Clone: `git clone https://github.com/braggy9/dj-mix-generator.git`
+- For other Claude sessions: Reference this GitHub URL or local path `/Users/tombragg/dj-mix-generator/CLAUDE.md`
 
 ---
 
