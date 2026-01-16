@@ -606,7 +606,7 @@ Both native apps use the same architecture and authentication pattern, sharing m
    - Style presets: Beach Day, Workout, Dinner Party, Late Night, Road Trip, House Party
    - Duration: Presets (30min, 1hr, 2hr) + custom slider (8-60 tracks)
    - Auto-discovers server at `mixmaster.mixtape.run`
-   - **NEW (v2.2.0 Build 6):** Spotify playlist integration - paste playlist URL to generate mix from those tracks
+   - **NEW (v2.2.0 Build 10):** Spotify playlist integration - paste playlist URL to generate mix from those tracks (backend integrated Jan 16, 2026)
 3. **Prompt Templates** - Save and load favorite prompt configurations
    - 4 default templates: Workout, Dinner Party, House Party, Sunset Session
    - Save current settings as new templates

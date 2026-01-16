@@ -7,7 +7,7 @@
 
 ## Discovery
 
-The iOS app **Build 6** (currently on TestFlight) **already has** a Spotify playlist URL field in the Mix tab, but the backend wasn't using it. This means:
+The iOS app **Build 10** (version 2.2.0, currently on TestFlight) **already has** a Spotify playlist URL field in the Mix tab, but the backend wasn't using it. This means:
 
 ✅ **UI already exists** - Users can paste Spotify playlist URLs
 ❌ **Backend wasn't connected** - The playlistURL was being sent but ignored
@@ -40,7 +40,7 @@ if (playlistURL && typeof playlistURL === 'string' && playlistURL.trim().length 
 
 ## How It Works (From User Perspective)
 
-**iOS App (Build 6+) - Mix Tab:**
+**iOS App (Build 10+) - Mix Tab:**
 
 1. User selects mix style (Beach Day, Workout, etc.) or uses custom prompt
 2. **NEW**: User pastes Spotify playlist URL (optional field already exists)
@@ -66,8 +66,8 @@ if (playlistURL && typeof playlistURL === 'string' && playlistURL.trim().length 
 
 ## Current App Status
 
-### iOS App (NotoriousDAD Build 6)
-- **Version**: 2.2.0 (Build 6)
+### iOS App (NotoriousDAD Build 10)
+- **Version**: 2.2.0 (Build 10)
 - **Status**: Live on TestFlight
 - **Playlist Field**: ✅ Already exists in Mix tab
 - **Functionality**: ✅ Now fully connected to backend
@@ -85,7 +85,7 @@ Similar integration exists - same playlist URL field that will now work.
 
 ## Features Now Available (No App Update Required!)
 
-Users with iOS Build 6+ can now:
+Users with iOS Build 10+ can now:
 
 ✅ **Paste any Spotify playlist URL** into the Mix tab
 ✅ **Generate downloadable mixes** from those playlists
@@ -191,7 +191,7 @@ Mix complete!
 ## Deployment Status
 
 ✅ **Backend**: Deployed to Hetzner (commit 8e3ed2c)
-✅ **iOS App**: Already has UI (Build 6 on TestFlight)
+✅ **iOS App**: Already has UI (Build 10 on TestFlight)
 ✅ **macOS App**: Already has UI (same codebase)
 ✅ **Server Library**: 14,382 files ready for matching (growing to 26,237)
 
@@ -203,7 +203,7 @@ Mix complete!
 
 🎉 **The feature is already live!** No app updates needed.
 
-Users with iOS Build 6+ or macOS app can start using the Spotify playlist feature immediately. They just need to:
+Users with iOS Build 10+ or macOS app can start using the Spotify playlist feature immediately. They just need to:
 1. Open the Mix tab
 2. Paste a Spotify playlist URL
 3. Generate their mix
