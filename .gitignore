@@ -72,3 +72,4 @@ logs/
 
 # Large data files
 apple-music-checkpoint.json
+build/SourcePackages/
