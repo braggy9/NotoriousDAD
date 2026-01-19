@@ -741,7 +741,7 @@ struct MashupFinderView: View {
                         )
 
                     Text("Find compatible track pairs for simultaneous playback")
-                        .font(AppTheme.Typography.subheadline)
+                        .font(AppTheme.Typography.callout)
                         .foregroundColor(AppTheme.Colors.textSecondary)
                 }
                 .padding(.horizontal)

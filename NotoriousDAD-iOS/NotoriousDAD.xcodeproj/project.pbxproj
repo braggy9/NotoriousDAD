@@ -7,14 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		29FE8E5003474718EF7283AD /* MashupManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3CCD35821104377F39B2A1 /* MashupManager.swift */; };
 		B1000001201D00000001 /* NotoriousDADApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000001 /* NotoriousDADApp.swift */; };
 		B1000001201D00000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000002 /* ContentView.swift */; };
 		B1000001201D00000003 /* SpotifyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000003 /* SpotifyManager.swift */; };
 		B1000001201D00000004 /* LibraryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000004 /* LibraryManager.swift */; };
 		B1000001201D00000005 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000005NM /* NotificationManager.swift */; };
 		B1000001201D00000006 /* AudioPlayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000006 /* AudioPlayerManager.swift */; };
-		B1000001201D00000008 /* SpotifyPlaybackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000008 /* SpotifyPlaybackManager.swift */; };
 		B1000001201D00000007 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000007 /* Assets.xcassets */; };
+		B1000001201D00000008 /* SpotifyPlaybackManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000008 /* SpotifyPlaybackManager.swift */; };
 		B1000001201D00000010 /* NotoriousDADKit in Frameworks */ = {isa = PBXBuildFile; productRef = B1000003201D00000010 /* NotoriousDADKit */; };
 		B1000001201D00000011 /* SpotifyAPI in Frameworks */ = {isa = PBXBuildFile; productRef = B1000003201D00000011 /* SpotifyAPI */; };
 		B1000001201D00000020 /* matched-tracks.json in Resources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000020 /* matched-tracks.json */; };
@@ -22,6 +23,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		7E3CCD35821104377F39B2A1 /* MashupManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MashupManager.swift; sourceTree = "<group>"; };
 		B1000002201D00000001 /* NotoriousDADApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotoriousDADApp.swift; sourceTree = "<group>"; };
 		B1000002201D00000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B1000002201D00000003 /* SpotifyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyManager.swift; sourceTree = "<group>"; };
@@ -29,8 +31,8 @@
 		B1000002201D00000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B1000002201D00000005NM /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		B1000002201D00000006 /* AudioPlayerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerManager.swift; sourceTree = "<group>"; };
-		B1000002201D00000008 /* SpotifyPlaybackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyPlaybackManager.swift; sourceTree = "<group>"; };
 		B1000002201D00000007 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B1000002201D00000008 /* SpotifyPlaybackManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyPlaybackManager.swift; sourceTree = "<group>"; };
 		B1000002201D00000020 /* matched-tracks.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "matched-tracks.json"; sourceTree = "<group>"; };
 		B1000002201D00000022 /* spotify-tokens.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "spotify-tokens.json"; sourceTree = "<group>"; };
 		B1000002201D00000099 /* NotoriousDAD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NotoriousDAD.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -86,6 +88,7 @@
 				B1000002201D00000004 /* LibraryManager.swift */,
 				B1000002201D00000005NM /* NotificationManager.swift */,
 				B1000002201D00000006 /* AudioPlayerManager.swift */,
+				7E3CCD35821104377F39B2A1 /* MashupManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -157,7 +160,7 @@
 			mainGroup = B1000005201D00000001;
 			packageReferences = (
 				B1000009201D00000001 /* XCRemoteSwiftPackageReference "SpotifyAPI" */,
-				B1000009201D00000002 /* XCLocalSwiftPackageReference "../NotoriousDADKit" */,
+				B1000009201D00000002 /* XCLocalSwiftPackageReference "NotoriousDADKit" */,
 			);
 			productRefGroup = B1000005201D00000099 /* Products */;
 			projectDirPath = "";
@@ -193,6 +196,7 @@
 				B1000001201D00000004 /* LibraryManager.swift in Sources */,
 				B1000001201D00000005 /* NotificationManager.swift in Sources */,
 				B1000001201D00000006 /* AudioPlayerManager.swift in Sources */,
+				29FE8E5003474718EF7283AD /* MashupManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -402,7 +406,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		B1000009201D00000002 /* XCLocalSwiftPackageReference "../NotoriousDADKit" */ = {
+		B1000009201D00000002 /* XCLocalSwiftPackageReference "NotoriousDADKit" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../NotoriousDADKit;
 		};
