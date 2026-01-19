@@ -1015,7 +1015,7 @@ struct MixGeneratorViewRedesign: View {
         Task {
             // Request background execution time so mix generation continues when app is backgrounded
             var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
-            backgroundTaskID = await UIApplication.shared.beginBackgroundTask(withName: "MixGeneration") {
+            backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "MixGeneration") {
                 // Cleanup if we run out of time
                 if backgroundTaskID != .invalid {
                     UIApplication.shared.endBackgroundTask(backgroundTaskID)
