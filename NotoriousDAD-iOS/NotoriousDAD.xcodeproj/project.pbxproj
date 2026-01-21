@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		29FE8E5003474718EF7283AD /* MashupManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E3CCD35821104377F39B2A1 /* MashupManager.swift */; };
+		503BE0768720C8B803FCF326 /* enhanced-track-database.json in Resources */ = {isa = PBXBuildFile; fileRef = 6FB914C4BB85E655B27FF561 /* enhanced-track-database.json */; };
 		B1000001201D00000001 /* NotoriousDADApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000001 /* NotoriousDADApp.swift */; };
 		B1000001201D00000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000002 /* ContentView.swift */; };
 		B1000001201D00000003 /* SpotifyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002201D00000003 /* SpotifyManager.swift */; };
@@ -23,6 +24,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		6FB914C4BB85E655B27FF561 /* enhanced-track-database.json */ = {isa = PBXFileReference; includeInIndex = 1; path = "enhanced-track-database.json"; sourceTree = "<group>"; };
 		7E3CCD35821104377F39B2A1 /* MashupManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MashupManager.swift; sourceTree = "<group>"; };
 		B1000002201D00000001 /* NotoriousDADApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotoriousDADApp.swift; sourceTree = "<group>"; };
 		B1000002201D00000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -98,6 +100,7 @@
 			children = (
 				B1000002201D00000020 /* matched-tracks.json */,
 				B1000002201D00000022 /* spotify-tokens.json */,
+				6FB914C4BB85E655B27FF561 /* enhanced-track-database.json */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -179,6 +182,7 @@
 				B1000001201D00000007 /* Assets.xcassets in Resources */,
 				B1000001201D00000020 /* matched-tracks.json in Resources */,
 				B1000001201D00000022 /* spotify-tokens.json in Resources */,
+				503BE0768720C8B803FCF326 /* enhanced-track-database.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

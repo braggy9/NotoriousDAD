@@ -7,7 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4B6A656DCB8D5C4EBB424FC5 /* enhanced-track-database.json in Sources */ = {isa = PBXBuildFile; fileRef = 0883E3E3A7BA0001C2647806 /* enhanced-track-database.json */; };
 		4E2FB77E50F6E395482212CD /* MashupManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D33A9A5455DB3B3097FD1B0 /* MashupManager.swift */; };
+		7B53395DF96E8A432973B852 /* enhanced-track-database.json in Resources */ = {isa = PBXBuildFile; fileRef = 5EFC3CA9C80FCA13DC10FC29 /* enhanced-track-database.json */; };
 		A1000001201D00000001 /* NotoriousDADApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002201D00000001 /* NotoriousDADApp.swift */; };
 		A1000001201D00000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002201D00000002 /* ContentView.swift */; };
 		A1000001201D00000003 /* SpotifyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002201D00000003 /* SpotifyManager.swift */; };
@@ -20,7 +22,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0883E3E3A7BA0001C2647806 /* enhanced-track-database.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "enhanced-track-database.json"; path = "Resources/enhanced-track-database.json"; sourceTree = "<group>"; };
 		5D33A9A5455DB3B3097FD1B0 /* MashupManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MashupManager.swift; sourceTree = "<group>"; };
+		5EFC3CA9C80FCA13DC10FC29 /* enhanced-track-database.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "enhanced-track-database.json"; path = "Resources/enhanced-track-database.json"; sourceTree = "<group>"; };
 		A1000002201D00000001 /* NotoriousDADApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotoriousDADApp.swift; sourceTree = "<group>"; };
 		A1000002201D00000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1000002201D00000003 /* SpotifyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyManager.swift; sourceTree = "<group>"; };
@@ -46,6 +50,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		115425BCC06C20332B77DE24 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				0883E3E3A7BA0001C2647806 /* enhanced-track-database.json */,
+				5EFC3CA9C80FCA13DC10FC29 /* enhanced-track-database.json */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
 		A1000005201D00000001 = {
 			isa = PBXGroup;
 			children = (
@@ -63,6 +76,7 @@
 				A1000002201D00000007 /* Assets.xcassets */,
 				A1000002201D00000006IP /* Info.plist */,
 				A1000002201D00000006 /* NotoriousDAD.entitlements */,
+				115425BCC06C20332B77DE24 /* Resources */,
 			);
 			path = NotoriousDAD;
 			sourceTree = "<group>";
@@ -162,6 +176,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1000001201D00000007 /* Assets.xcassets in Resources */,
+				7B53395DF96E8A432973B852 /* enhanced-track-database.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -179,6 +194,7 @@
 				A1000001201D00000004 /* LibraryManager.swift in Sources */,
 				A1000001201D00000005 /* NotificationManager.swift in Sources */,
 				4E2FB77E50F6E395482212CD /* MashupManager.swift in Sources */,
+				4B6A656DCB8D5C4EBB424FC5 /* enhanced-track-database.json in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

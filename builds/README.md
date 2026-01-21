@@ -4,16 +4,16 @@ This directory contains iOS app archives ready for TestFlight deployment.
 
 ## Current Build
 
-**Build 12** (January 21, 2026)
-- Archive: `NotoriousDAD-Build12.xcarchive`
-- Version: 2.2.0 (Build 12)
+**Build 13** (January 22, 2026)
+- Archive: `NotoriousDAD-Build13.xcarchive`
+- Version: 2.2.0 (Build 13)
 - Status: Ready for TestFlight upload
 
-### What's New in Build 12
-- ✅ Mashup Finder fully integrated (Browse + Search modes)
-- ✅ Enhanced database with 9,982 tracks (was 6,886 in previous TestFlight)
-- ✅ Hetzner backend fixed and working (mashup API + mix generation)
-- ✅ All features tested and ready
+### What's New in Build 13
+- ✅ **FIXED:** Enhanced database (9,982 tracks) now properly included
+- ✅ Mashup Finder fully integrated and working
+- ✅ Track library count fixed (was showing 8,176, now shows correct count)
+- ⚠️ **Known Issue:** Playlist generator has 401 auth error (requires new Anthropic API key on server)
 
 ### How to Upload to TestFlight
 
