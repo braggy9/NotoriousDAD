@@ -73,3 +73,7 @@ logs/
 # Large data files
 apple-music-checkpoint.json
 build/SourcePackages/
+
+# iOS Build Archives
+builds/*.xcarchive/
+*.xcarchive/

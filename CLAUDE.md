@@ -278,15 +278,16 @@ All three layers are active and connected:
 - **Deployment**: Automatic via GitHub integration
 
 ### 4. TestFlight (iOS App) 📱
-- **Version**: 2.2.0 (Build 10)
+- **Version**: 2.2.0 (Build 12)
 - **Platform**: iOS (iPhone/iPad)
-- **Status**: Live for internal testing
-- **Features**: Playlist generation, audio mix generation, Spotify playlist integration
+- **Status**: Archived, ready for upload
+- **Features**: Playlist generation, audio mix generation, mashup finder, Spotify integration
+- **Archive**: `builds/NotoriousDAD-Build12.xcarchive`
 
 ### 5. macOS App 💻
-- **Version**: 2.2.0 (Build 10)
+- **Version**: 2.2.0 (Build 12)
 - **Platform**: macOS
-- **Status**: Local builds available
+- **Status**: Deployed to `/Applications/`
 - **Features**: Same as iOS app
 
 **Everything is connected and ready to share!**
@@ -532,10 +533,11 @@ All platforms use **semantic versioning** (MAJOR.MINOR.PATCH):
 | Platform | Version | Build | Location | Display |
 |----------|---------|-------|----------|---------|
 | **Web App** | 2.2.0 | N/A | `package.json` | Footer on main page |
-| **iOS App** | 2.2.0 | **10** | `Info.plist` CFBundleVersion | Settings → About → Version |
-| **macOS App** | 2.2.0 | **10** | `Info.plist` CFBundleVersion | Settings → About → Version |
+| **iOS App** | 2.2.0 | **12** | `Info.plist` CFBundleVersion | Settings → About → Version |
+| **macOS App** | 2.2.0 | **12** | `Info.plist` CFBundleVersion | Settings → About → Version |
 
 **Version History:**
+- **2.2.0 Build 12** (2026-01-21): Mashup Finder integration complete, Hetzner server fixed and stable, iOS archived for TestFlight, macOS deployed to /Applications/
 - **2.2.0 Build 10** (2026-01-16): Fixed enhanced database integration (9,982 tracks), view title clarity, NotoriousDADKit Track model
 - **2.2.0 Build 9** (2026-01-14): Mix duration fix, tab naming updates, Hetzner endpoint integration
 - **2.2.0 Build 4** (2026-01-08): Electric Gold UI redesign - dark mode, larger touch targets, stepped flows, haptic feedback, prompt templates, error recovery with retry, mix duration slider
@@ -552,6 +554,7 @@ When incrementing versions, update all three files:
 
 | Date | Change |
 |------|--------|
+| Jan 21, 2026 | **Build 12**: Mashup Finder deployed to iOS/macOS, Hetzner server rebuilt and stable, enhanced database confirmed working |
 | Jan 16, 2026 | **Build 10**: Fixed LibraryManager to load enhanced-track-database.json (9,982 tracks) |
 | Jan 16, 2026 | Updated iOS/macOS apps with NotoriousDADKit Track model integration |
 | Jan 16, 2026 | Fixed view titles: "Create Mix" → "Generate Playlist", "Audio Mix" → "Mix" |
