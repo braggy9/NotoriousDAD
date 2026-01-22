@@ -837,6 +837,26 @@ The iOS app uses a custom design system defined in `AppTheme.swift`:
 
 ---
 
+## ⚠️ Known Issues - Xcode Cloud
+
+### Xcode Cloud Continuous Failures (Jan 23, 2026)
+**Status:** ⚠️ NON-BLOCKING - False positive errors
+
+**Symptoms:** Email notifications for failed builds (Build 10, 11, 12...) on every Git push
+
+**Cause:** Xcode Cloud configured with incorrect scheme names:
+- Expects: `NotoriousDAD`
+- Actual: `NotoriousDAD-iOS`, `NotoriousDAD-macOS`
+
+**Impact:** NONE - These are CI build failures only. All production systems working:
+- ✅ iOS app (Build 16) working
+- ✅ Server healthy and operational
+- ✅ All APIs functional
+
+**Fix:** Disable Xcode Cloud via App Store Connect (see `XCODE-CLOUD-DISABLE.md`)
+
+---
+
 ## Known Issues
 
 ### ✅ FIXED: Audio Mix Duration Issue (2026-01-14)
