@@ -150,7 +150,7 @@ class NotificationManager: ObservableObject {
 
     /// Check server status and notify if changed
     private func checkServerStatus() async {
-        let serverURL = "https://mixmaster.mixtape.run/api/generate-mix"
+        let serverURL = "https://mixmaster.mixtape.run/api/health"
 
         guard let url = URL(string: serverURL) else { return }
 

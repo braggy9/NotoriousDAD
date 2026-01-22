@@ -341,9 +341,20 @@ struct MixGeneratorViewRedesign: View {
                     )
                 }
             } catch {
+                // Log full error details for debugging
+                print("❌ Mix Generation Error:")
+                print("  Type: \(type(of: error))")
+                print("  Description: \(error)")
+                print("  Localized: \(error.localizedDescription)")
+                if let mixError = error as? MixError {
+                    print("  MixError Details: \(mixError)")
+                }
+
                 await MainActor.run {
                     isGenerating = false
-                    self.error = error.localizedDescription
+                    // Show full error details to user
+                    let errorMsg = "Error: \(error.localizedDescription)"
+                    self.error = errorMsg
                     progress = ""
                     notificationManager.notifyMixFailed(error: error.localizedDescription)
                 }
@@ -359,7 +370,16 @@ struct MixGeneratorViewRedesign: View {
             baseUrl = "http://\(serverDiscovery.serverAddress):3000"
         }
 
+        print("🎵 Starting mix generation...")
+        print("  Server: \(baseUrl)")
+        print("  Prompt: \(mixPrompt)")
+        print("  Track Count: \(selectedDuration.trackCount)")
+        if !playlistURL.isEmpty {
+            print("  Playlist URL: \(playlistURL)")
+        }
+
         guard let startUrl = URL(string: "\(baseUrl)/api/generate-mix") else {
+            print("❌ Invalid URL: \(baseUrl)/api/generate-mix")
             throw MixError.invalidURL
         }
 
@@ -378,7 +398,9 @@ struct MixGeneratorViewRedesign: View {
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
+        print("📤 Sending POST request to /api/generate-mix...")
         let (startData, startResponse) = try await URLSession.shared.data(for: request)
+        print("📥 Received response from /api/generate-mix")
 
         guard let httpResponse = startResponse as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -391,8 +413,15 @@ struct MixGeneratorViewRedesign: View {
 
         guard let startJson = try? JSONSerialization.jsonObject(with: startData) as? [String: Any],
               let jobId = startJson["jobId"] as? String else {
+            print("❌ Failed to parse jobId from response")
+            if let responseStr = String(data: startData, encoding: .utf8) {
+                print("  Response: \(responseStr)")
+            }
             throw MixError.invalidResponse
         }
+
+        print("✅ Got jobId: \(jobId)")
+        print("🔄 Starting status polling...")
 
         // Poll for status (faster polling, longer timeout for new duration fix)
         await MainActor.run { progress = "Selecting tracks..." }
@@ -409,8 +438,11 @@ struct MixGeneratorViewRedesign: View {
 
             guard let statusJson = try? JSONSerialization.jsonObject(with: statusData) as? [String: Any],
                   let status = statusJson["status"] as? String else {
+                print("⚠️ Poll \(pollCount): Failed to parse status JSON")
                 continue
             }
+
+            print("📊 Poll \(pollCount): Status = \(status)")
 
             // Update progress message and percentage
             if let msg = statusJson["progressMessage"] as? String {
@@ -421,11 +453,15 @@ struct MixGeneratorViewRedesign: View {
             }
 
             if status == "complete" {
+                print("✅ Mix generation complete!")
                 guard let resultData = statusJson["result"] as? [String: Any] else {
+                    print("❌ Failed to parse result data")
                     throw MixError.invalidResponse
                 }
 
                 let tracklist = resultData["tracklist"] as? [[String: Any]] ?? []
+                print("  Tracks: \(tracklist.count)")
+                print("  Mix URL: \(resultData["mixUrl"] as? String ?? "unknown")")
 
                 return MixResult(
                     filename: resultData["mixName"] as? String ?? "Mix",
@@ -442,11 +478,14 @@ struct MixGeneratorViewRedesign: View {
                     }
                 )
             } else if status == "failed" {
-                throw MixError.apiError(statusJson["error"] as? String ?? "Failed")
+                let errorMsg = statusJson["error"] as? String ?? "Unknown error"
+                print("❌ Mix generation failed: \(errorMsg)")
+                throw MixError.apiError(errorMsg)
             }
         }
 
-        throw MixError.apiError("Timeout")
+        print("⏱️ Timeout after \(maxPolls) polls (20 minutes)")
+        throw MixError.apiError("Timeout - mix took too long to generate")
     }
 
     private func formatDuration(_ seconds: Double) -> String {
