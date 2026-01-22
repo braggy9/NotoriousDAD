@@ -533,10 +533,11 @@ All platforms use **semantic versioning** (MAJOR.MINOR.PATCH):
 | Platform | Version | Build | Location | Display |
 |----------|---------|-------|----------|---------|
 | **Web App** | 2.2.0 | N/A | `package.json` | Footer on main page |
-| **iOS App** | 2.2.0 | **13** | `Info.plist` CFBundleVersion | Settings → About → Version |
+| **iOS App** | 2.2.0 | **16** | `Info.plist` CFBundleVersion | Settings → About → Version |
 | **macOS App** | 2.2.0 | **13** | `Info.plist` CFBundleVersion | Settings → About → Version |
 
 **Version History:**
+- **2.2.0 Build 16** (2026-01-23): Enhanced debugging and monitoring - fixed server health check endpoint, added comprehensive debug logging throughout mix generation pipeline, improved error handling and reporting
 - **2.2.0 Build 13** (2026-01-22): **CRITICAL FIX** - Enhanced database (9,982 tracks) now properly included in both apps, track library count corrected, Playlist Generator 401 auth issue identified (requires new Anthropic API key)
 - **2.2.0 Build 12** (2026-01-21): Mashup Finder integration complete, Hetzner server fixed and stable, iOS archived for TestFlight, macOS deployed to /Applications/
 - **2.2.0 Build 10** (2026-01-16): Fixed enhanced database integration (9,982 tracks), view title clarity, NotoriousDADKit Track model
@@ -555,6 +556,8 @@ When incrementing versions, update all three files:
 
 | Date | Change |
 |------|--------|
+| Jan 23, 2026 | **Build 16**: Enhanced debugging/monitoring - fixed health check endpoint, comprehensive logging, improved error handling |
+| Jan 22, 2026 | **Build 13**: Critical database fix - enhanced database (9,982 tracks) properly bundled in apps, Playlist Generator API key issue identified |
 | Jan 21, 2026 | **Build 12**: Mashup Finder deployed to iOS/macOS, Hetzner server rebuilt and stable, enhanced database confirmed working |
 | Jan 16, 2026 | **Build 10**: Fixed LibraryManager to load enhanced-track-database.json (9,982 tracks) |
 | Jan 16, 2026 | Updated iOS/macOS apps with NotoriousDADKit Track model integration |
