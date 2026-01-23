@@ -332,6 +332,14 @@ All three layers are active and connected:
 ./scripts/deploy-hetzner.sh
 ```
 
+**Important Build Note:** Next.js 16's Turbopack doesn't handle symlinks pointing outside the project root. The `audio-library` symlink causes build errors. Current workaround in deployment script:
+```bash
+# Temporarily move symlink during build
+mv audio-library audio-library-temp
+npm run build
+mv audio-library-temp audio-library
+```
+
 ### Server Management (SSH)
 ```bash
 # Check app status
@@ -537,7 +545,7 @@ All platforms use **semantic versioning** (MAJOR.MINOR.PATCH):
 | **macOS App** | 2.2.0 | **13** | `Info.plist` CFBundleVersion | Settings → About → Version |
 
 **Version History:**
-- **2.2.0 Build 16** (2026-01-23): Enhanced debugging and monitoring - fixed server health check endpoint, added comprehensive debug logging throughout mix generation pipeline, improved error handling and reporting
+- **2.2.0 Build 16** (2026-01-23): Enhanced debugging and monitoring - fixed server health check endpoint, added comprehensive debug logging throughout mix generation pipeline, improved error handling and reporting. **Server deployment complete and verified working.**
 - **2.2.0 Build 13** (2026-01-22): **CRITICAL FIX** - Enhanced database (9,982 tracks) now properly included in both apps, track library count corrected, Playlist Generator 401 auth issue identified (requires new Anthropic API key)
 - **2.2.0 Build 12** (2026-01-21): Mashup Finder integration complete, Hetzner server fixed and stable, iOS archived for TestFlight, macOS deployed to /Applications/
 - **2.2.0 Build 10** (2026-01-16): Fixed enhanced database integration (9,982 tracks), view title clarity, NotoriousDADKit Track model

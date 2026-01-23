@@ -5,8 +5,9 @@ import { execSync } from 'child_process';
 
 export const dynamic = 'force-dynamic';
 
-const CLOUD_LIBRARY_FILE = path.join(process.cwd(), 'data', 'audio-library-analysis.json');
-const AUDIO_DIR = path.join(process.cwd(), 'audio-library');
+// Define paths as functions to avoid Turbopack scanning them at build time
+const getCloudLibraryFile = () => path.join(process.cwd(), 'data', 'audio-library-analysis.json');
+const getAudioDir = () => path.join(process.cwd(), 'audio-library');
 
 function checkFfprobe(): { installed: boolean; version?: string; error?: string } {
   try {
@@ -38,15 +39,15 @@ export async function GET() {
   try {
     const debug: Record<string, unknown> = {
       cwd: process.cwd(),
-      libraryFile: CLOUD_LIBRARY_FILE,
-      libraryFileExists: fs.existsSync(CLOUD_LIBRARY_FILE),
-      audioDir: AUDIO_DIR,
-      audioDirExists: fs.existsSync(AUDIO_DIR),
+      libraryFile: getCloudLibraryFile(),
+      libraryFileExists: fs.existsSync(getCloudLibraryFile()),
+      audioDir: getAudioDir(),
+      audioDirExists: fs.existsSync(getAudioDir()),
     };
 
     // Check library file
-    if (fs.existsSync(CLOUD_LIBRARY_FILE)) {
-      const raw = fs.readFileSync(CLOUD_LIBRARY_FILE, 'utf-8');
+    if (fs.existsSync(getCloudLibraryFile())) {
+      const raw = fs.readFileSync(getCloudLibraryFile(), 'utf-8');
       debug.libraryFileSize = raw.length;
 
       try {
@@ -88,8 +89,8 @@ export async function GET() {
     }
 
     // Check audio directory
-    if (fs.existsSync(AUDIO_DIR)) {
-      const files = fs.readdirSync(AUDIO_DIR);
+    if (fs.existsSync(getAudioDir())) {
+      const files = fs.readdirSync(getAudioDir());
       debug.audioDirFileCount = files.length;
       debug.sampleAudioFiles = files.slice(0, 5);
     }
@@ -98,9 +99,9 @@ export async function GET() {
     debug.ffprobe = checkFfprobe();
 
     // BPM distribution check
-    if (fs.existsSync(CLOUD_LIBRARY_FILE)) {
+    if (fs.existsSync(getCloudLibraryFile())) {
       try {
-        const data = JSON.parse(fs.readFileSync(CLOUD_LIBRARY_FILE, 'utf-8'));
+        const data = JSON.parse(fs.readFileSync(getCloudLibraryFile(), 'utf-8'));
         const bpms = (data.tracks || []).map((t: { bpm: number }) => t.bpm).filter((b: number) => b > 0);
         if (bpms.length > 0) {
           const sorted = bpms.sort((a: number, b: number) => a - b);
@@ -116,9 +117,9 @@ export async function GET() {
     }
 
     // Test file playability on first 3 existing files
-    if (fs.existsSync(CLOUD_LIBRARY_FILE)) {
+    if (fs.existsSync(getCloudLibraryFile())) {
       try {
-        const data = JSON.parse(fs.readFileSync(CLOUD_LIBRARY_FILE, 'utf-8'));
+        const data = JSON.parse(fs.readFileSync(getCloudLibraryFile(), 'utf-8'));
         const playabilityTests: Array<{ file: string; result: ReturnType<typeof testFilePlayable> }> = [];
 
         for (const track of (data.tracks || []).slice(0, 3)) {
