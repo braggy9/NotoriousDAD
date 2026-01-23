@@ -383,10 +383,16 @@ struct MixGeneratorViewRedesign: View {
             throw MixError.invalidURL
         }
 
+        // Create URLSession with extended timeout for initial request
+        // Server may be slow to respond if FFmpeg is already running
+        let initialConfig = URLSessionConfiguration.default
+        initialConfig.timeoutIntervalForRequest = 300 // 5 minutes for initial response
+        initialConfig.timeoutIntervalForResource = 1200 // 20 minutes total
+        let initialSession = URLSession(configuration: initialConfig)
+
         var request = URLRequest(url: startUrl)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 300 // 5 minutes for mix generation
 
         var body: [String: Any] = [
             "prompt": mixPrompt,
@@ -399,7 +405,7 @@ struct MixGeneratorViewRedesign: View {
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         print("📤 Sending POST request to /api/generate-mix...")
-        let (startData, startResponse) = try await URLSession.shared.data(for: request)
+        let (startData, startResponse) = try await initialSession.data(for: request)
         print("📥 Received response from /api/generate-mix")
 
         guard let httpResponse = startResponse as? HTTPURLResponse,
@@ -430,11 +436,18 @@ struct MixGeneratorViewRedesign: View {
         var pollCount = 0
         let maxPolls = 400 // 400 polls × 3 sec = 20 minutes max (handles 2-hour mixes)
 
+        // Create URLSession with very long timeout for status polling
+        // Server can be slow to respond (30+ sec) while FFmpeg is running
+        let sessionConfig = URLSessionConfiguration.default
+        sessionConfig.timeoutIntervalForRequest = 300 // 5 minutes per status check
+        sessionConfig.timeoutIntervalForResource = 1200 // 20 minutes total
+        let statusSession = URLSession(configuration: sessionConfig)
+
         while pollCount < maxPolls {
-            try await Task.sleep(nanoseconds: 3_000_000_000) // Poll every 3 seconds (was 5)
+            try await Task.sleep(nanoseconds: 10_000_000_000) // Poll every 10 seconds (server is slow during FFmpeg)
             pollCount += 1
 
-            let (statusData, _) = try await URLSession.shared.data(from: statusUrl)
+            let (statusData, _) = try await statusSession.data(from: statusUrl)
 
             guard let statusJson = try? JSONSerialization.jsonObject(with: statusData) as? [String: Any],
                   let status = statusJson["status"] as? String else {

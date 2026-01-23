@@ -1,0 +1,704 @@
+{
+  "source": "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/NotoriousDAD/Views/ContentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Mix Created!",
+        "location": {
+          "startingColumn": 20,
+          "startingLine": 224
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 220
+        }
+      },
+      {
+        "comment": "",
+        "key": "Open in Spotify",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 226
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 24,
+          "startingLine": 230
+        }
+      },
+      {
+        "comment": "",
+        "key": "Your playlist has been added to Spotify.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 232
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generate Playlist",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 241
+        }
+      },
+      {
+        "comment": "",
+        "key": "Must Include",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 310
+        }
+      },
+      {
+        "comment": "",
+        "key": "Influences the vibe but won't necessarily appear",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 333
+        }
+      },
+      {
+        "comment": "",
+        "key": "Style Reference",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 323
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tracks",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 372
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 376
+        }
+      },
+      {
+        "comment": "",
+        "key": "~%lld min",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 385
+        }
+      },
+      {
+        "comment": "",
+        "key": "Add any extra preferences or exclusions",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 408
+        }
+      },
+      {
+        "comment": "",
+        "key": "Additional Notes",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 414
+        }
+      },
+      {
+        "comment": "",
+        "key": "Creating Mix...",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 436
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generate Mix",
+        "location": {
+          "startingColumn": 57,
+          "startingLine": 436
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 779
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mix",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 800
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generate seamless DJ mixes from your library",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 804
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quick Presets",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 820
+        }
+      },
+      {
+        "comment": "",
+        "key": "Include mood, genres, BPM range, or occasion",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 866
+        }
+      },
+      {
+        "comment": "",
+        "key": "Describe Your Mix",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 854
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generate mix from tracks in this playlist",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 889
+        }
+      },
+      {
+        "comment": "",
+        "key": "From Spotify Playlist (Optional)",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 878
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mix Length",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 900
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generating...",
+        "location": {
+          "startingColumn": 37,
+          "startingLine": 935
+        }
+      },
+      {
+        "comment": "",
+        "key": "Generate Mix",
+        "location": {
+          "startingColumn": 55,
+          "startingLine": 935
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%%",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 968
+        }
+      },
+      {
+        "comment": "",
+        "key": "Connecting...",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1298
+        }
+      },
+      {
+        "comment": "",
+        "key": "Server Connected",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1305
+        }
+      },
+      {
+        "comment": "",
+        "key": "Not Connected",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1312
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mix Ready!",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1345
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld tracks • %@",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1348
+        }
+      },
+      {
+        "comment": "",
+        "key": "Pause",
+        "location": {
+          "startingColumn": 53,
+          "startingLine": 1413
+        }
+      },
+      {
+        "comment": "",
+        "key": "Play",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 1413
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading...",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1440
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1454
+        }
+      },
+      {
+        "comment": "",
+        "key": "+ %lld more tracks",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1487
+        }
+      },
+      {
+        "comment": "",
+        "key": "Server Settings",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1621
+        }
+      },
+      {
+        "comment": "",
+        "key": "Not Connected",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1567
+        }
+      },
+      {
+        "comment": "",
+        "key": "Status",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1571
+        }
+      },
+      {
+        "comment": "",
+        "key": "Server Address",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1575
+        }
+      },
+      {
+        "comment": "",
+        "key": "Testing...",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1584
+        }
+      },
+      {
+        "comment": "",
+        "key": "Test Connection",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1587
+        }
+      },
+      {
+        "comment": "",
+        "key": "Manual Configuration",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1599
+        }
+      },
+      {
+        "comment": "",
+        "key": "Searching...",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1609
+        }
+      },
+      {
+        "comment": "",
+        "key": "Auto-Discover",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1612
+        }
+      },
+      {
+        "comment": "",
+        "key": "Automatic",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1618
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1625
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tracklist",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1709
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1666
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld BPM",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1688
+        }
+      },
+      {
+        "comment": "",
+        "key": "Done",
+        "location": {
+          "startingColumn": 28,
+          "startingLine": 1713
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mode",
+        "location": {
+          "startingColumn": 32,
+          "startingLine": 1812
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mashup Finder",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1798
+        }
+      },
+      {
+        "comment": "",
+        "key": "Find compatible track pairs for simultaneous playback",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1803
+        }
+      },
+      {
+        "comment": "",
+        "key": "Browse Top Pairs",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1813
+        }
+      },
+      {
+        "comment": "",
+        "key": "Find Partner",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 1814
+        }
+      },
+      {
+        "comment": "",
+        "key": "Min Compatibility",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1839
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%%",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1843
+        }
+      },
+      {
+        "comment": "",
+        "key": "Analyzing...",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 1870
+        }
+      },
+      {
+        "comment": "",
+        "key": "Find Mashups",
+        "location": {
+          "startingColumn": 69,
+          "startingLine": 1870
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search for a track",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1905
+        }
+      },
+      {
+        "comment": "",
+        "key": "Track name or artist",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 1909
+        }
+      },
+      {
+        "comment": "",
+        "key": "Top Mashup Opportunities",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1976
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mixing Notes",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 2035
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%%",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1991
+        }
+      },
+      {
+        "comment": "",
+        "key": "•",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 2039
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld BPM",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 2079
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tap a track to find its mashup partner",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 2095
+        }
+      },
+      {
+        "comment": "",
+        "key": "Best Mashup Partner",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 2142
+        }
+      },
+      {
+        "comment": "",
+        "key": "Playlist",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 2175
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mix",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 2181
+        }
+      },
+      {
+        "comment": "",
+        "key": "Mashups",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 2187
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tracks",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 2193
+        }
+      },
+      {
+        "comment": "",
+        "key": "Settings",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 2199
+        }
+      },
+      {
+        "comment": "",
+        "key": "Library",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2329
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search tracks...",
+        "location": {
+          "startingColumn": 52,
+          "startingLine": 2331
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2396
+        }
+      },
+      {
+        "comment": "",
+        "key": "Settings",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2427
+        }
+      },
+      {
+        "comment": "",
+        "key": "Spotify",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 2434
+        }
+      },
+      {
+        "comment": "",
+        "key": "Connected",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 2438
+        }
+      },
+      {
+        "comment": "",
+        "key": "Refresh Connection",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 2449
+        }
+      },
+      {
+        "comment": "",
+        "key": "About",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 2461
+        }
+      },
+      {
+        "comment": "",
+        "key": "Credits",
+        "location": {
+          "startingColumn": 19,
+          "startingLine": 2472
+        }
+      },
+      {
+        "comment": "",
+        "key": "Notorious DAD",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2474
+        }
+      },
+      {
+        "comment": "",
+        "key": "Built for DJs. Uses Spotify API, Mixed In Key data, and your personal music library.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 2475
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,78 @@
+{
+  "buildCommand" : {
+    "command" : "build",
+    "skipDependencies" : false,
+    "style" : "buildOnly"
+  },
+  "configuredTargets" : [
+    {
+      "guid" : "c5c06199f71126ccc8b5cb036c3616a5bfe9fdc9d83346fb0f9dc18bec2216d4"
+    }
+  ],
+  "containerPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/NotoriousDAD.xcodeproj",
+  "continueBuildingAfterErrors" : false,
+  "dependencyScope" : "workspace",
+  "enableIndexBuildArena" : false,
+  "hideShellScriptEnvironment" : false,
+  "parameters" : {
+    "action" : "install",
+    "activeArchitecture" : "arm64",
+    "activeRunDestination" : {
+      "disableOnlyActiveArch" : false,
+      "platform" : "iphoneos",
+      "sdk" : "iphoneos26.2",
+      "sdkVariant" : "iphoneos",
+      "supportedArchitectures" : [
+        "arm64e",
+        "arm64"
+      ],
+      "targetArchitecture" : "arm64"
+    },
+    "arenaInfo" : {
+      "buildIntermediatesPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex",
+      "buildProductsPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Products",
+      "derivedDataPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build",
+      "indexDataStoreFolderPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Index.noindex/DataStore",
+      "indexEnableDataStore" : true,
+      "indexPCHPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Index.noindex/PrecompiledHeaders",
+      "pchPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/PrecompiledHeaders"
+    },
+    "configurationName" : "Release",
+    "overrides" : {
+      "commandLine" : {
+        "table" : {
+
+        }
+      },
+      "synthesized" : {
+        "table" : {
+          "ACTION" : "install",
+          "ASSET_PACK_FOLDER_PATH" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/ArchiveIntermediates/NotoriousDAD/InstallationBuildProductsLocation/OnDemandResources",
+          "ASSETCATALOG_COMPILER_FLATTENED_APP_ICON_PATH" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/ArchiveIntermediates/NotoriousDAD/BuildProductsPath/ProductIcon.png",
+          "DEPLOYMENT_LOCATION" : "YES",
+          "DEPLOYMENT_POSTPROCESSING" : "YES",
+          "DSTROOT" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/ArchiveIntermediates/NotoriousDAD/InstallationBuildProductsLocation",
+          "EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE" : "NO",
+          "ENABLE_PREVIEWS" : "NO",
+          "ENABLE_SIGNATURE_AGGREGATION" : "YES",
+          "ENABLE_XOJIT_PREVIEWS" : "YES",
+          "INDEX_ENABLE_DATA_STORE" : "NO",
+          "MESSAGES_APPLICATION_EXTENSION_SUPPORT_FOLDER_PATH" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/ArchiveIntermediates/NotoriousDAD/BuildProductsPath/MessagesApplicationExtensionSupport",
+          "MESSAGES_APPLICATION_SUPPORT_FOLDER_PATH" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/ArchiveIntermediates/NotoriousDAD/BuildProductsPath/MessagesApplicationSupport",
+          "OBJROOT" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/ArchiveIntermediates/NotoriousDAD/IntermediateBuildFilesPath",
+          "SHARED_PRECOMPS_DIR" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/ArchiveIntermediates/NotoriousDAD/PrecompiledHeaders",
+          "SIGNATURE_METADATA_FOLDER_PATH" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/ArchiveIntermediates/NotoriousDAD/BuildProductsPath/Signatures",
+          "SWIFT_STDLIB_TOOL_UNSIGNED_DESTINATION_DIR" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/ArchiveIntermediates/NotoriousDAD/BuildProductsPath/SwiftSupport",
+          "SYMROOT" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/ArchiveIntermediates/NotoriousDAD/BuildProductsPath",
+          "WATCHKIT_2_SUPPORT_FOLDER_PATH" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/ArchiveIntermediates/NotoriousDAD/BuildProductsPath/WatchKitSupport2"
+        }
+      }
+    }
+  },
+  "schemeCommand" : "archive",
+  "showNonLoggedProgress" : true,
+  "useDryRun" : false,
+  "useImplicitDependencies" : true,
+  "useLegacyBuildLocations" : false,
+  "useParallelTargets" : true
+}

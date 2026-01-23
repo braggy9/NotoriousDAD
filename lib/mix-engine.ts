@@ -12,6 +12,42 @@
  */
 
 import { execSync, spawn } from 'child_process';
+import { promisify } from 'util';
+import { exec } from 'child_process';
+
+const execAsync = promisify(exec);
+
+/**
+ * Execute FFmpeg command without blocking Node.js event loop
+ * Uses spawn with proper async handling to allow HTTP requests during mixing
+ */
+function execFFmpegAsync(command: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('sh', ['-c', command], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stderr = '';
+
+    child.stderr?.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.on('error', (error) => {
+      reject(new Error(`FFmpeg spawn error: ${error.message}`));
+    });
+
+    child.on('exit', (code, signal) => {
+      if (code === 0) {
+        resolve();
+      } else if (signal) {
+        reject(new Error(`FFmpeg killed with signal ${signal}`));
+      } else {
+        reject(new Error(`FFmpeg exited with code ${code}\n${stderr}`));
+      }
+    });
+  });
+}
 import * as fs from 'fs';
 import * as path from 'path';
 import { TrackAnalysis, analyzeTrack } from './beat-analyzer';
@@ -279,7 +315,9 @@ export async function mixTwoTracks(
     );
 
     console.log(`  Mixing: ${track1.title} → ${track2.title}`);
-    execSync(command, { stdio: 'pipe' });
+
+    // Use spawn-based async execution to avoid blocking Node.js event loop
+    await execFFmpegAsync(command);
 
     return { success: true };
   } catch (error) {
@@ -434,9 +472,7 @@ export async function mixPlaylist(
       if (outputExt === '.flac') codec = 'flac';
       if (outputExt === '.wav') codec = 'pcm_s16le';
 
-      execSync(`ffmpeg -y -i "${currentMixPath}" -codec:a ${codec} "${job.outputPath}"`, {
-        stdio: 'pipe',
-      });
+      await execFFmpegAsync(`ffmpeg -y -i "${currentMixPath}" -codec:a ${codec} "${job.outputPath}"`);
     } else {
       fs.copyFileSync(currentMixPath, job.outputPath);
     }

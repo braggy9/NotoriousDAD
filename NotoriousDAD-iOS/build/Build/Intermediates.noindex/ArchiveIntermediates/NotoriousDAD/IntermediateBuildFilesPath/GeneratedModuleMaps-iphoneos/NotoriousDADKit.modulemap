@@ -1,0 +1,4 @@
+module NotoriousDADKit {
+header "NotoriousDADKit-Swift.h"
+export *
+}

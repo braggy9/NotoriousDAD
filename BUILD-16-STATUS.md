@@ -236,3 +236,52 @@ Duration: ~3-4 minutes
 - ✅ Latest code deployed and running
 
 **Next Step:** Test from iOS app - server is ready at `https://mixmaster.mixtape.run`
+
+---
+
+## 🔧 CRITICAL FIX: Non-Blocking FFmpeg Execution (6:30 AM AEDT)
+
+**Issue:** Server completely unresponsive during mix generation
+- iOS app stuck at 20% with timeout errors
+- Server unable to respond to ANY HTTP requests while FFmpeg running
+- FFmpeg at 103% CPU blocking Node.js event loop
+- Even async/await didn't help - CPU saturation prevented HTTP processing
+
+**Root Cause:**
+- `execSync()` and `execAsync()` both block when CPU is maxed out
+- Node.js single-threaded event loop cannot process HTTP requests
+- FFmpeg using 100%+ CPU prevents all other operations
+
+**Fix Applied:**
+Replaced all FFmpeg execution with spawn-based non-blocking system:
+
+```typescript
+/**
+ * Execute FFmpeg command without blocking Node.js event loop
+ * Uses spawn with proper async handling to allow HTTP requests during mixing
+ */
+function execFFmpegAsync(command: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('sh', ['-c', command], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    // Proper event handling allows event loop to process other requests
+  });
+}
+```
+
+**Changes:**
+1. ✅ Created `execFFmpegAsync()` using `spawn()` instead of `exec()`
+2. ✅ Updated `mixTwoTracks()` to use new async execution (line 288)
+3. ✅ Updated final encoding step to use new async execution (line 475)
+4. ✅ Deployed to Hetzner server
+5. ✅ iOS app updated with 300-second timeouts
+
+**Expected Result:**
+- ✅ Server can respond to HTTP requests while FFmpeg runs
+- ✅ Status polling works during mix generation
+- ✅ iOS app receives progress updates in real-time
+- ✅ Multiple concurrent requests don't crash server
+
+**Testing:** Will verify mix generation completes with live status updates to iOS app
+
