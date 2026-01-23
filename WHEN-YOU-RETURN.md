@@ -120,6 +120,92 @@ After this fix:
 
 ---
 
-Test it when you're back and let me know!
+---
+
+## ⚠️ UPDATE: Spawn-Based Fix Still Has Issues
+
+**Time:** 6:50 AM AEDT
+
+**Test Results:** The spawn-based fix didn't fully solve the problem.
+
+**What Happened:**
+- ✅ Server restarted successfully with new code
+- ✅ spawn() implementation is correct
+- ❌ Server STILL times out during mix generation
+- ❌ FFmpeg at 100% CPU still blocks event loop
+
+**Why Spawn Didn't Help:**
+Even spawn() can't prevent blocking when the system is CPU-bound. FFmpeg using 100% of one CPU core monopolizes resources and prevents Node.js from processing HTTP requests.
+
+**Test Output:**
+```
+Poll 1: ✅ Responded in 2.2s
+Poll 2: ❌ Timeout after 60s
+Poll 3: ❌ Timeout after 60s
+Health check: ❌ Timeout after 5s
+```
+
+---
+
+## 🔧 The Real Solution (Requires More Work)
+
+The **only** way to fix this is to move FFmpeg to a completely separate execution context:
+
+### Option 1: Worker Threads (Recommended)
+- Use Node.js `worker_threads` to run FFmpeg in separate thread
+- HTTP server stays responsive in main thread
+- ~2-3 hour refactor
+
+### Option 2: Separate Worker Process
+- Run mix generation in dedicated Node process
+- Use Redis/database for job queue
+- More complex, but production-ready
+- ~4-5 hour implementation
+
+### Option 3: Accept Current Behavior
+- Mix generation DOES work (completes successfully)
+- iOS app will timeout, but mix completes on server
+- Check server output folder for completed mixes
+- Not ideal, but functional
+
+---
+
+## 💡 My Recommendation
+
+**For Now:**
+Use **Playlist Generator** (Tab 1) instead of Mix Generator:
+- ✅ Works perfectly (no server-side processing)
+- ✅ Creates Spotify playlists instantly
+- ✅ Same AI curation and harmonic mixing
+- ✅ Can stream immediately
+
+**For Later:**
+If you want downloadable MP3 mixes to work properly, I need to implement worker threads. This requires:
+- 2-3 hours of focused work
+- Testing across all platforms
+- Potential for edge cases
+
+---
+
+## 📊 What Actually Works Right Now
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Playlist Generation | ✅ Perfect | Creates Spotify playlists, instant |
+| Mix Generation (Web) | ⚠️ Partial | Works but browser may timeout |
+| Mix Generation (iOS) | ❌ Times out | Mix completes, but app doesn't see it |
+| Mix Generation (macOS) | ❌ Times out | Same as iOS |
+| Mashup Finder | ✅ Perfect | Works great |
+| Track Library | ✅ Perfect | 9,982 tracks loaded |
+
+---
+
+## 🎯 Bottom Line
+
+**The spawn-based fix was architecturally correct but insufficient.** The problem is deeper - CPU saturation blocks Node.js regardless of async methods.
+
+**Next step:** Implement worker threads if you want downloadable mixes to work. Otherwise, use Playlist Generator which works perfectly.
+
+Let me know what you'd like to do!
 
 - Claude
