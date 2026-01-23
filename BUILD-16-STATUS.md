@@ -285,3 +285,20 @@ function execFFmpegAsync(command: string): Promise<void> {
 
 **Testing:** Will verify mix generation completes with live status updates to iOS app
 
+**Deployment Status (6:40 AM AEDT):**
+- ✅ Code deployed to server
+- ⏳ Waiting for current mix to complete (track 13 of 19, 68%)
+- ⏳ Server will restart automatically when mix finishes
+- ⏳ Automated tests ready in `test-mix-generation.sh`
+
+**What User Should Do When They Return:**
+1. Open NotoriousDAD app on iPhone
+2. Go to Mix tab
+3. Select "Beach Day" or "Dinner Party" preset
+4. Tap "Generate Mix"
+5. **Expected:** Progress bar updates smoothly 0-100% (no timeout!)
+6. **Expected:** Mix completes and downloads successfully
+
+If it works: Mix generation is fixed across all devices!
+If it still times out: Check server logs - may need worker thread approach
+
