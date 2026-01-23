@@ -12,18 +12,20 @@
  */
 
 import { execSync, spawn } from 'child_process';
-import { promisify } from 'util';
-import { exec } from 'child_process';
-
-const execAsync = promisify(exec);
 
 /**
- * Execute FFmpeg command without blocking Node.js event loop
- * Uses spawn with proper async handling to allow HTTP requests during mixing
+ * Execute FFmpeg command with CPU limit to avoid blocking Node.js event loop
+ * Uses 'cpulimit' to cap FFmpeg at 75% CPU, ensuring Node.js gets sufficient
+ * CPU time to process HTTP requests during mixing operations
  */
 function execFFmpegAsync(command: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn('sh', ['-c', command], {
+    // Wrap FFmpeg command with cpulimit to cap at 75% CPU (300% on 4-core system)
+    // This leaves 25% CPU minimum for Node.js HTTP handling
+    // Using --  to separate cpulimit args from ffmpeg command
+    const limitedCommand = `cpulimit -l 75 -- ${command}`;
+
+    const child = spawn('sh', ['-c', limitedCommand], {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
