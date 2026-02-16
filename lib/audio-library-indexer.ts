@@ -35,6 +35,7 @@ export interface IndexedAudioFile {
   // Parsed from filename or metadata
   artist: string;
   title: string;
+  genre?: string; // v4: Genre from ID3 tags (populated by analysis scripts)
 
   // MIK analysis data (if available)
   mikData?: {

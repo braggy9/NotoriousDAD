@@ -13,6 +13,12 @@ import { mixPlaylist, MixJob } from '@/lib/mix-engine';
 import { optimizeTrackOrder } from '@/lib/automix-optimizer';
 import { createJob, updateJob, completeJob, failJob } from '@/lib/mix-job-manager';
 import Anthropic from '@anthropic-ai/sdk';
+import SpotifyWebApi from 'spotify-web-api-node';
+import {
+  createSpotifyClient,
+  getAudioAnalysis,
+  SpotifyAudioAnalysis,
+} from '@/lib/spotify-audio-analyzer';
 
 const OUTPUT_DIR = path.join(process.cwd(), 'output');
 const CLOUD_LIBRARY_FILE = path.join(process.cwd(), 'data', 'audio-library-analysis.json');
@@ -41,6 +47,8 @@ interface CloudAudioTrack {
   energy: number;
   duration: number;
   fileSize: number;
+  genre?: string; // v4: Genre tag from audio file metadata
+  spotifyId?: string; // v5: Spotify track ID (for audio analysis)
 
   // v3 Enhanced fields
   analyzerVersion?: string;
@@ -87,7 +95,7 @@ function loadCloudLibrary(): CloudAudioTrack[] {
 }
 
 /**
- * Convert cloud track to IndexedAudioFile format (v3 enhanced)
+ * Convert cloud track to IndexedAudioFile format (v4 with genre)
  */
 function cloudTrackToIndexed(track: CloudAudioTrack): IndexedAudioFile {
   const ext = track.fileName.split('.').pop()?.toLowerCase() || 'mp3';
@@ -108,6 +116,11 @@ function cloudTrackToIndexed(track: CloudAudioTrack): IndexedAudioFile {
     },
   };
 
+  // Pass through v4 genre tag if available
+  if (track.genre) {
+    indexed.genre = track.genre;
+  }
+
   // Pass through v3 enhanced data if available
   if (track.mixPoints) {
     indexed.mixPoints = track.mixPoints;
@@ -120,6 +133,67 @@ function cloudTrackToIndexed(track: CloudAudioTrack): IndexedAudioFile {
   }
 
   return indexed;
+}
+
+/**
+ * Fetch Spotify Audio Analysis for tracks that have Spotify IDs
+ * Returns a map of filePath -> SpotifyAudioAnalysis
+ */
+async function fetchSpotifyAnalysisForTracks(
+  tracks: IndexedAudioFile[]
+): Promise<Map<string, SpotifyAudioAnalysis>> {
+  const analysisMap = new Map<string, SpotifyAudioAnalysis>();
+
+  // Check if we have Spotify credentials
+  const spotifyClientId = process.env.SPOTIFY_CLIENT_ID;
+  const spotifyClientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+
+  if (!spotifyClientId || !spotifyClientSecret) {
+    console.log('  ⚠️ Spotify credentials not configured - skipping audio analysis');
+    return analysisMap;
+  }
+
+  try {
+    // Create Spotify client with client credentials flow
+    const spotifyApi = new SpotifyWebApi({
+      clientId: spotifyClientId,
+      clientSecret: spotifyClientSecret,
+    });
+
+    // Get access token using client credentials
+    const tokenResponse = await spotifyApi.clientCredentialsGrant();
+    spotifyApi.setAccessToken(tokenResponse.body.access_token);
+
+    console.log('  🎵 Fetching Spotify Audio Analysis for tracks with Spotify IDs...');
+
+    // Filter tracks that have Spotify IDs
+    const tracksWithSpotifyIds = tracks.filter((track: any) => track.spotifyId);
+
+    if (tracksWithSpotifyIds.length === 0) {
+      console.log('  ⚠️ No tracks have Spotify IDs - skipping audio analysis');
+      return analysisMap;
+    }
+
+    console.log(`  📊 Found ${tracksWithSpotifyIds.length} tracks with Spotify IDs`);
+
+    // Fetch analysis for each track (with rate limiting)
+    for (const track of tracksWithSpotifyIds) {
+      try {
+        const analysis = await getAudioAnalysis(spotifyApi, (track as any).spotifyId);
+        if (analysis) {
+          analysisMap.set(track.filePath, analysis);
+        }
+      } catch (error) {
+        console.log(`  ⚠️ Failed to fetch analysis for ${track.artist} - ${track.title}:`, error instanceof Error ? error.message : String(error));
+      }
+    }
+
+    console.log(`  ✅ Fetched Spotify analysis for ${analysisMap.size} tracks`);
+  } catch (error) {
+    console.log('  ⚠️ Spotify analysis fetching failed:', error instanceof Error ? error.message : String(error));
+  }
+
+  return analysisMap;
 }
 
 /**
@@ -259,6 +333,15 @@ async function processMixJob(jobId: string, prompt: string, trackCount: number):
     const orderedTracks = optimizeTrackOrderForMix(selectedTracks);
     console.log('  🔀 Optimized track order');
 
+    updateJob(jobId, {
+      progress: 35,
+      progressMessage: 'Fetching Spotify audio analysis...',
+    });
+
+    // Step 4.5: Fetch Spotify Audio Analysis for quality improvements
+    const spotifyAnalysisMap = await fetchSpotifyAnalysisForTracks(orderedTracks);
+    console.log(`  🎵 Spotify analysis ready for ${spotifyAnalysisMap.size} tracks`);
+
     // Step 5: Generate the mix
     const mixName = generateMixName(constraints);
     const outputPath = path.join(OUTPUT_DIR, `${sanitizeFilename(mixName)}.mp3`);
@@ -283,6 +366,18 @@ async function processMixJob(jobId: string, prompt: string, trackCount: number):
             duration: file.durationSeconds || 0,
           },
         };
+
+        // Add Spotify ID if available (v5)
+        if ((file as any).spotifyId) {
+          track.spotifyId = (file as any).spotifyId;
+        }
+
+        // Add Spotify Audio Analysis if available (v5)
+        const spotifyAnalysis = spotifyAnalysisMap.get(file.filePath);
+        if (spotifyAnalysis) {
+          track.spotifyAnalysis = spotifyAnalysis;
+          console.log(`    ✓ Spotify analysis for ${file.title}: ${spotifyAnalysis.bars.length} bars, ${spotifyAnalysis.sections.length} sections`);
+        }
 
         // Pass through v3 enhanced mix points if available
         if (file.mixPoints) {
@@ -375,7 +470,7 @@ async function parsePrompt(prompt: string, defaultTrackCount: number): Promise<M
     const anthropic = new Anthropic({ apiKey });
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 500,
       messages: [
         {
@@ -466,82 +561,232 @@ function parsePromptBasic(prompt: string, defaults: MixConstraints, hasExplicitT
 }
 
 /**
- * Select tracks based on constraints (with genre filtering)
+ * Calculate selection score for a track based on quality and constraints
+ */
+function calculateMixTrackScore(
+  track: IndexedAudioFile,
+  constraints: MixConstraints,
+  artistCounts: Map<string, number>
+): number {
+  let score = 0;
+
+  // 1. Base quality (all tracks are from uploaded library)
+  score += 30;
+
+  // 2. MIK data present (BPM/key analyzed)
+  if (track.mikData?.bpm && track.mikData?.camelotKey) {
+    score += 20;
+  }
+
+  // 3. Genre match (v4 genre tags)
+  if (constraints.genres?.length > 0 && track.genre) {
+    const trackGenre = track.genre.toLowerCase();
+    const hasMatch = constraints.genres.some(g =>
+      trackGenre.includes(g.toLowerCase()) || g.toLowerCase().includes(trackGenre)
+    );
+    if (hasMatch) score += 20;
+  }
+
+  // 4. BPM constraint (strict penalty for out-of-range)
+  const bpm = track.mikData?.bpm;
+  if (bpm) {
+    if (bpm >= constraints.bpmRange.min && bpm <= constraints.bpmRange.max) {
+      score += 15;
+    } else {
+      score -= 50; // Major penalty
+    }
+  }
+
+  // 5. Energy constraint
+  const energy = track.mikData?.energy || 5;
+  if (energy >= constraints.energyRange.min && energy <= constraints.energyRange.max) {
+    score += 10;
+  } else {
+    score -= 30;
+  }
+
+  // 6. Artist variety bonus (penalize overused artists)
+  const artistCount = artistCounts.get(track.artist) || 0;
+  if (artistCount === 0) {
+    score += 15; // Bonus for new artist
+  } else if (artistCount >= 2) {
+    score -= (artistCount * 10); // Progressive penalty
+  }
+
+  // 7. Randomness for natural variety
+  score += Math.random() * 10;
+
+  return score;
+}
+
+/**
+ * Select tracks based on constraints (with genre filtering and variety enforcement)
  */
 async function selectTracks(
   pool: IndexedAudioFile[],
   constraints: MixConstraints
 ): Promise<IndexedAudioFile[]> {
-  // Filter by BPM range
-  let filtered = pool.filter((track) => {
+  console.log(`  🎯 Selecting ${constraints.trackCount} tracks from pool of ${pool.length}`);
+
+  // Step 1: Apply hard filters (BPM, energy, genre)
+  let filtered = pool;
+
+  // Filter by BPM range (with tolerance for expansion)
+  const bpmFiltered = filtered.filter((track) => {
     const bpm = track.mikData?.bpm;
     if (!bpm) return false;
-    return bpm >= constraints.bpmRange.min && bpm <= constraints.bpmRange.max;
+    return bpm >= constraints.bpmRange.min - 10 && bpm <= constraints.bpmRange.max + 10;
   });
 
-  // Filter by energy range
-  filtered = filtered.filter((track) => {
-    const energy = track.mikData?.energy || 5;
-    return energy >= constraints.energyRange.min && energy <= constraints.energyRange.max;
-  });
+  // If enough tracks, use strict BPM filter
+  if (bpmFiltered.length >= constraints.trackCount * 2) {
+    filtered = bpmFiltered;
+    console.log(`  ✓ BPM filter: ${filtered.length} tracks in range ${constraints.bpmRange.min}-${constraints.bpmRange.max}`);
+  } else {
+    console.log(`  ⚠️ BPM filter too strict, using expanded range`);
+  }
 
-  // Filter by genre using Claude AI if genres specified
-  if (constraints.genres?.length > 0 && filtered.length > 0) {
+  // Filter by genre using actual genre tags (v4)
+  if (constraints.genres?.length > 0) {
     console.log(`  🎵 Filtering by genre: ${constraints.genres.join(', ')}`);
-    filtered = await filterByGenre(filtered, constraints.genres);
-    console.log(`  ✓ ${filtered.length} tracks match genre filter`);
-  }
+    const genreFiltered = await filterByGenre(filtered, constraints.genres);
 
-  // If not enough tracks, expand the BPM range
-  if (filtered.length < constraints.trackCount) {
-    console.log('  ⚠️ Expanding BPM range to find more tracks');
-    let expanded = pool.filter((track) => {
-      const bpm = track.mikData?.bpm;
-      if (!bpm) return false;
-      return bpm >= constraints.bpmRange.min - 15 && bpm <= constraints.bpmRange.max + 15;
-    });
-    // Re-apply genre filter to expanded pool
-    if (constraints.genres?.length > 0) {
-      expanded = await filterByGenre(expanded, constraints.genres);
+    if (genreFiltered.length >= constraints.trackCount) {
+      filtered = genreFiltered;
+      console.log(`  ✓ Genre filter: ${filtered.length} tracks match`);
+    } else {
+      console.log(`  ⚠️ Genre filter too strict (${genreFiltered.length} matches), using all tracks`);
     }
-    filtered = expanded;
   }
 
-  // If still not enough, use all tracks (without genre filter as fallback)
-  if (filtered.length < constraints.trackCount) {
-    console.log('  ⚠️ Using all available tracks (genre filter relaxed)');
-    filtered = pool.filter(track => track.mikData?.bpm);
+  // Step 2: Score all filtered tracks
+  const artistCounts = new Map<string, number>();
+  const scoredTracks = filtered.map(track => ({
+    track,
+    score: calculateMixTrackScore(track, constraints, artistCounts)
+  }));
+
+  // Sort by score (highest first)
+  scoredTracks.sort((a, b) => b.score - a.score);
+
+  console.log(`  📊 Top 5 scored tracks:`);
+  scoredTracks.slice(0, 5).forEach((item, i) => {
+    console.log(`    ${i + 1}. ${item.track.artist} - ${item.track.title} (score: ${item.score.toFixed(1)})`);
+  });
+
+  // Step 3: Select tracks with variety enforcement
+  const maxPerArtist = Math.max(2, Math.ceil(constraints.trackCount / 15));
+  console.log(`  🎨 Variety enforcement: max ${maxPerArtist} tracks per artist (guarantees 15+ artists)`);
+
+  const selected: IndexedAudioFile[] = [];
+  const selectedArtists = new Map<string, number>();
+  const selectedIds = new Set<string>();
+
+  for (const { track, score } of scoredTracks) {
+    if (selected.length >= constraints.trackCount) break;
+
+    // Skip if score is too low (failed hard constraints)
+    if (score < 0) continue;
+
+    // Skip duplicates
+    const trackId = track.filePath;
+    if (selectedIds.has(trackId)) continue;
+
+    // Check artist variety
+    const artistCount = selectedArtists.get(track.artist) || 0;
+    if (artistCount >= maxPerArtist) {
+      console.log(`    ⏭️ Skipping ${track.artist} - ${track.title} (artist quota reached: ${artistCount}/${maxPerArtist})`);
+      continue;
+    }
+
+    // Add track
+    selected.push(track);
+    selectedIds.add(trackId);
+    selectedArtists.set(track.artist, artistCount + 1);
   }
 
-  // Shuffle and take the requested number
-  const shuffled = filtered.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, constraints.trackCount);
+  console.log(`  ✅ Selected ${selected.length} tracks from ${selectedArtists.size} different artists`);
+  console.log(`  🎨 Artist distribution:`);
+  const sortedArtists = Array.from(selectedArtists.entries()).sort((a, b) => b[1] - a[1]);
+  sortedArtists.slice(0, 10).forEach(([artist, count]) => {
+    console.log(`    - ${artist}: ${count} track${count > 1 ? 's' : ''}`);
+  });
+
+  return selected;
 }
 
 /**
- * Filter tracks by genre using Claude AI
+ * Filter tracks by genre using actual genre tags from audio files
  */
 async function filterByGenre(
   tracks: IndexedAudioFile[],
   genres: string[]
 ): Promise<IndexedAudioFile[]> {
-  if (tracks.length === 0) return tracks;
+  if (tracks.length === 0 || genres.length === 0) return tracks;
 
-  // Batch tracks for efficient API usage
-  const trackList = tracks.map((t, i) => `${i}. ${t.artist} - ${t.title}`).join('\n');
+  console.log(`  🎵 Filtering by genre: ${genres.join(', ')}`);
+
+  // First, try exact genre tag matching
+  const lowerGenres = genres.map(g => g.toLowerCase());
+
+  // Build genre mapping for requested genres
+  const genreAliases: Record<string, string[]> = {
+    'house': ['house', 'deep house', 'tech house', 'progressive house', 'funky house', 'vocal house', 'french house', 'tribal house', 'electro house'],
+    'disco': ['disco', 'nu disco', 'nu-disco', 'nudisco', 'funky', 'funk', 'boogie'],
+    'techno': ['techno', 'tech house', 'minimal', 'dub techno'],
+    'electronic': ['electronic', 'electronica', 'dance', 'edm', 'electro'],
+    'indie': ['indie', 'indie rock', 'indie dance', 'indie pop'],
+    'hip-hop': ['hip-hop', 'hip hop', 'rap', 'hip hop/rap'],
+    'rock': ['rock', 'alt. rock', 'alternative rock', 'indie rock'],
+  };
+
+  // Expand requested genres with aliases
+  const expandedGenres = new Set<string>();
+  lowerGenres.forEach(genre => {
+    expandedGenres.add(genre);
+    if (genreAliases[genre]) {
+      genreAliases[genre].forEach(alias => expandedGenres.add(alias));
+    }
+  });
+
+  // Filter tracks that have matching genre tags
+  const withGenreTags = tracks.filter(track => {
+    const trackGenre = (track as any).genre?.toLowerCase();
+    if (!trackGenre) return false;
+
+    // Check if track genre matches any expanded genre
+    return Array.from(expandedGenres).some(g =>
+      trackGenre.includes(g) || g.includes(trackGenre)
+    );
+  });
+
+  console.log(`  ✓ ${withGenreTags.length} tracks match genre tags`);
+
+  // If we found enough matches, use them
+  if (withGenreTags.length > 0) {
+    return withGenreTags;
+  }
+
+  // Fallback: Use Claude AI for tracks without genre tags
+  console.log(`  ⚠️ No tracks with matching genre tags, falling back to AI filter`);
+
+  const tracksWithoutGenre = tracks.filter(track => !(track as any).genre);
+  if (tracksWithoutGenre.length === 0) return [];
+
+  const trackList = tracksWithoutGenre.map((t, i) => `${i}. ${t.artist} - ${t.title}`).join('\n');
   const genreStr = genres.join(', ');
 
   try {
     const anthropic = new Anthropic();
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 2000,
       messages: [{
         role: 'user',
         content: `You are a DJ music expert. From this list of tracks, identify which ones fit the genre(s): ${genreStr}
 
 For house music, include: house, deep house, tech house, progressive house, nu disco, disco, funky house, vocal house, french house.
-For nudisco, include: nu disco, disco, indie dance, funky, boogie.
+For disco, include: nu disco, disco, indie dance, funky, boogie.
 Exclude: ambient, experimental, indie rock, folk, classical, hip-hop (unless specifically house remixes).
 
 Tracks:
@@ -554,18 +799,19 @@ If no tracks match, return an empty array: []`
 
     const content = response.content[0];
     if (content.type === 'text') {
-      // Extract JSON array from response
       const match = content.text.match(/\[[\d,\s]*\]/);
       if (match) {
         const indices: number[] = JSON.parse(match[0]);
-        return indices.map(i => tracks[i]).filter(Boolean);
+        const aiFiltered = indices.map(i => tracksWithoutGenre[i]).filter(Boolean);
+        console.log(`  ✓ AI matched ${aiFiltered.length} additional tracks`);
+        return aiFiltered;
       }
     }
   } catch (err) {
-    console.log('  ⚠️ Genre filter failed, using all tracks:', err);
+    console.log('  ⚠️ AI genre filter failed:', err);
   }
 
-  return tracks; // Return all tracks if filtering fails
+  return []; // Return empty if no matches found
 }
 
 /**
@@ -625,27 +871,45 @@ function parseCamelotToSpotifyKey(camelot: string): number {
  * Generate a mix name based on constraints
  */
 function generateMixName(constraints: MixConstraints): string {
-  const parts: string[] = [];
+  const parts: string[] = ['DAD']; // Notorious DAD prefix
 
+  // Creative descriptors based on energy curve
+  const energyDescriptors: Record<string, string[]> = {
+    build: ['Warm-Up', 'Rising', 'Ascending', 'Building', 'Elevating'],
+    peak: ['Peak-Time', 'Prime', 'Apex', 'Zenith', 'High-Energy'],
+    chill: ['Sunset', 'Wind-Down', 'Mellow', 'Smooth', 'Easy'],
+    steady: ['Groove', 'Flow', 'Cruise', 'Ride', 'Vibe'],
+  };
+
+  // Add energy descriptor
+  if (constraints.energyCurve && energyDescriptors[constraints.energyCurve]) {
+    const descriptors = energyDescriptors[constraints.energyCurve];
+    parts.push(descriptors[Math.floor(Math.random() * descriptors.length)]);
+  }
+
+  // Add genre if specified
   if (constraints.genres?.length) {
-    parts.push(constraints.genres[0].replace(/\b\w/g, (c: string) => c.toUpperCase()));
+    const genre = constraints.genres[0].replace(/\b\w/g, (c: string) => c.toUpperCase());
+    parts.push(genre);
   }
 
-  if (constraints.energyCurve === 'build') {
-    parts.push('Warm Up');
-  } else if (constraints.energyCurve === 'peak') {
-    parts.push('Peak Time');
-  } else if (constraints.energyCurve === 'chill') {
-    parts.push('Sunset');
-  }
+  // Add time-based descriptor
+  const hour = new Date().getHours();
+  let timeDescriptor = 'Session';
+  if (hour >= 5 && hour < 12) timeDescriptor = 'Morning';
+  else if (hour >= 12 && hour < 17) timeDescriptor = 'Afternoon';
+  else if (hour >= 17 && hour < 21) timeDescriptor = 'Evening';
+  else if (hour >= 21 || hour < 2) timeDescriptor = 'Night';
+  else timeDescriptor = 'Late-Night';
 
-  if (parts.length === 0) {
-    parts.push('Session');
-  }
+  parts.push(timeDescriptor);
 
-  parts.push('Mix');
+  // Add date for uniqueness (YYYY-MM-DD format)
+  const date = new Date();
+  const dateStr = date.toISOString().split('T')[0]; // 2026-02-12
+  parts.push(dateStr);
 
-  return parts.join(' ');
+  return parts.join('-');
 }
 
 /**
