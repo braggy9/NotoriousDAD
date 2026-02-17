@@ -155,7 +155,7 @@ async function parsePromptToConstraints(prompt: string): Promise<MixConstraints>
   }
 
   const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5-20250929',
     max_tokens: 1024,
     messages: [
       {
@@ -450,7 +450,7 @@ async function generateMixName(constraints: MixConstraints): Promise<string> {
 
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 50,
       messages: [
         {

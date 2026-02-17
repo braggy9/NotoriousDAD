@@ -1,0 +1,12 @@
+{
+  "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/SourcePackages/checkouts/RegularExpressions/Sources/RegularExpressions/Regex Methods/PatternMatching.swift" : {
+    "abi-baseline-json" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/RegularExpressions.build/Release-iphoneos/RegularExpressions.build/Objects-normal/arm64/RegularExpressions.abi.json",
+    "const-values" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/RegularExpressions.build/Release-iphoneos/RegularExpressions.build/Objects-normal/arm64/RegularExpressions-primary.swiftconstvalues",
+    "dependencies" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/RegularExpressions.build/Release-iphoneos/RegularExpressions.build/Objects-normal/arm64/RegularExpressions-primary.d",
+    "diagnostics" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/RegularExpressions.build/Release-iphoneos/RegularExpressions.build/Objects-normal/arm64/RegularExpressions-primary.dia",
+    "objc-header" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/RegularExpressions.build/Release-iphoneos/RegularExpressions.build/Objects-normal/arm64/RegularExpressions-Swift.h",
+    "swiftdoc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/RegularExpressions.build/Release-iphoneos/RegularExpressions.build/Objects-normal/arm64/RegularExpressions.swiftdoc",
+    "swiftmodule" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/RegularExpressions.build/Release-iphoneos/RegularExpressions.build/Objects-normal/arm64/RegularExpressions.swiftmodule",
+    "swiftsourceinfo" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/RegularExpressions.build/Release-iphoneos/RegularExpressions.build/Objects-normal/arm64/RegularExpressions.swiftsourceinfo"
+  }
+}

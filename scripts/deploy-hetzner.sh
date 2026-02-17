@@ -44,6 +44,7 @@ rsync -avz --progress \
   --exclude 'CLAUDE.local.md' \
   --exclude '*.local.md' \
   --exclude 'SPOTIFY-DOWNLOADER.md' \
+  --exclude 'SPOTIFY-AUTOMATION.md' \
   --exclude 'tsconfig.tsbuildinfo' \
   $LOCAL_DIR/ $SERVER:$SERVER_DIR/
 
@@ -62,9 +63,21 @@ cd /var/www/notorious-dad
 echo "📦 Installing npm dependencies..."
 npm install --production=false
 
+# Temporarily move audio-library symlink (Turbopack can't handle symlinks)
+echo "📦 Moving audio-library symlink temporarily..."
+if [ -L audio-library ]; then
+  mv audio-library audio-library-temp
+fi
+
 # Build the Next.js app
 echo "🔨 Building Next.js app..."
 npm run build
+
+# Restore audio-library symlink
+echo "📦 Restoring audio-library symlink..."
+if [ -L audio-library-temp ]; then
+  mv audio-library-temp audio-library
+fi
 
 # Start or restart PM2
 if pm2 list | grep -q "notorious-dad"; then

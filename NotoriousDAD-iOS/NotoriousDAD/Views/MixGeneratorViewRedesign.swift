@@ -398,9 +398,17 @@ struct MixGeneratorViewRedesign: View {
             "prompt": mixPrompt,
             "trackCount": selectedDuration.trackCount
         ]
-        // Include playlist URL if provided
+        // Include playlist URL and refresh_token if provided
         if !playlistURL.isEmpty {
             body["playlistURL"] = playlistURL
+
+            // Load Spotify refresh token for playlist authentication
+            if let refreshToken = loadSpotifyRefreshToken() {
+                body["refresh_token"] = refreshToken
+                print("  🔑 Including refresh_token for Spotify playlist access")
+            } else {
+                print("  ⚠️ No refresh_token found - playlist may fail to load")
+            }
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -505,6 +513,18 @@ struct MixGeneratorViewRedesign: View {
         let mins = Int(seconds) / 60
         let secs = Int(seconds) % 60
         return String(format: "%d:%02d", mins, secs)
+    }
+
+    /// Load Spotify refresh token from bundled spotify-tokens.json
+    private func loadSpotifyRefreshToken() -> String? {
+        guard let url = Bundle.main.url(forResource: "spotify-tokens", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let refreshToken = json["refresh_token"] as? String else {
+            print("❌ Failed to load Spotify refresh token from spotify-tokens.json")
+            return nil
+        }
+        return refreshToken
     }
 }
 
@@ -793,6 +813,20 @@ struct MixResultCardRedesign: View {
                             .foregroundColor(AppTheme.Colors.textSecondary)
                     }
                 }
+
+                if let error = player.error, !error.isEmpty {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(AppTheme.Colors.error)
+                        Text(error)
+                            .font(AppTheme.Typography.caption)
+                            .foregroundColor(AppTheme.Colors.error)
+                            .lineLimit(3)
+                    }
+                    .padding(AppTheme.Spacing.xs)
+                    .background(AppTheme.Colors.error.opacity(0.15))
+                    .cornerRadius(AppTheme.Radius.sm)
+                }
             }
             .padding(AppTheme.Spacing.sm)
             .background(AppTheme.Colors.surfaceHighlight.opacity(0.5))
@@ -866,23 +900,39 @@ struct MixResultCardRedesign: View {
         } else {
             urlString = "http://\(serverAddress):3000\(mix.downloadUrl)"
         }
+        print("🔗 MixResultCard: Constructed URL: \(urlString)")
         return URL(string: urlString)
     }
 
     private func streamMix() {
-        guard let url = getMixURL() else { return }
+        guard let url = getMixURL() else {
+            print("❌ MixResultCard: Failed to construct URL for streaming")
+            return
+        }
+        print("▶️ MixResultCard: Starting stream from: \(url.absoluteString)")
         player.streamAudio(from: url)
     }
 
     private func saveMix() {
-        guard let url = getMixURL() else { return }
+        print("🚀 MixResultCard: saveMix() called - button tap registered!")
+        print("📋 MixResultCard: mix.downloadUrl = \(mix.downloadUrl)")
+        print("🌐 MixResultCard: serverAddress = \(serverAddress)")
+
+        guard let url = getMixURL() else {
+            print("❌ MixResultCard: Failed to construct URL for download")
+            player.error = "Invalid download URL"
+            return
+        }
+        print("💾 MixResultCard: Starting download from: \(url.absoluteString)")
         player.downloadAudio(from: url) { result in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let fileURL):
+                    print("✅ MixResultCard: Download succeeded, showing share sheet for: \(fileURL.path)")
                     shareURL = fileURL
                     showShare = true
                 case .failure(let error):
+                    print("❌ MixResultCard: Download failed: \(error.localizedDescription)")
                     player.error = error.localizedDescription
                 }
             }

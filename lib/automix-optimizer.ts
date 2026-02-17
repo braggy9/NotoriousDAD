@@ -3,8 +3,21 @@
 import { SpotifyTrackWithFeatures, PlaylistTrack } from './types';
 import { scoreTransition, spotifyToCamelot } from './camelot-wheel';
 
-// Build energy curve for playlist
-type EnergyCurve = 'build' | 'decline' | 'wave' | 'steady';
+// Build energy curve for playlist (enhanced with multi-peak curves)
+type EnergyCurve =
+  | 'build'
+  | 'decline'
+  | 'wave'
+  | 'steady'
+  | 'double-peak'      // Valley in middle, peaks at 30% and 80%
+  | 'late-peak'        // Build to climax at 85%
+  | 'rollercoaster'    // Multiple ups/downs
+  | 'plateau-peak';    // Flat warm-up, sustained peak
+
+// Gaussian peak function for smooth curves
+const gaussianPeak = (x: number, center: number, width: number): number => {
+  return Math.exp(-Math.pow(x - center, 2) / (2 * Math.pow(width, 2)));
+};
 
 const getEnergyTarget = (
   position: number,
@@ -15,20 +28,67 @@ const getEnergyTarget = (
 
   switch (curve) {
     case 'build':
-      // Start low, end high
+      // Start low, end high (classic warmup set)
       return 0.3 + (progress * 0.6); // 0.3 → 0.9
 
     case 'decline':
-      // Start high, end low
+      // Start high, end low (cool-down set)
       return 0.9 - (progress * 0.6); // 0.9 → 0.3
 
     case 'wave':
-      // Peak in the middle
+      // Single peak in the middle (classic wave)
       return 0.4 + (Math.sin(progress * Math.PI) * 0.5); // 0.4 → 0.9 → 0.4
+
+    case 'double-peak':
+      // Two peaks with valley in between (dramatic set structure)
+      const peak1 = gaussianPeak(progress, 0.25, 0.10) * 0.4; // Peak at 25%
+      const peak2 = gaussianPeak(progress, 0.75, 0.10) * 0.6; // Bigger peak at 75%
+      const baseline = 0.3 + (progress * 0.1); // Slight upward baseline
+      return baseline + peak1 + peak2; // Result: 0.3 → 0.7 → 0.4 → 0.9 → 0.5
+
+    case 'late-peak':
+      // Steady build to climax near the end (festival closing set)
+      if (progress < 0.7) {
+        // Gradual build for first 70%
+        return 0.4 + (progress * 0.3); // 0.4 → 0.61
+      } else {
+        // Exponential rise to peak at 85%
+        const peakProgress = (progress - 0.7) / 0.3; // 0 → 1 over last 30%
+        const peakValue = 0.61 + (Math.pow(peakProgress, 1.5) * 0.29); // 0.61 → 0.9
+        // Slight decline after 85%
+        if (progress > 0.85) {
+          const declineProgress = (progress - 0.85) / 0.15;
+          return peakValue - (declineProgress * 0.15); // 0.9 → 0.75
+        }
+        return peakValue;
+      }
+
+    case 'rollercoaster':
+      // Multiple ups and downs (keeps crowd engaged)
+      const wave1 = Math.sin(progress * Math.PI * 2) * 0.15; // First wave
+      const wave2 = Math.sin(progress * Math.PI * 3) * 0.10; // Second wave (faster)
+      const trend = progress * 0.2; // Slight upward trend
+      return 0.5 + wave1 + wave2 + trend; // Result: 0.5 → 0.8 with waves
+
+    case 'plateau-peak':
+      // Flat warm-up, then sustained peak (radio show / livestream)
+      if (progress < 0.25) {
+        return 0.45; // Flat intro (25%)
+      } else if (progress < 0.35) {
+        // Transition to peak (10%)
+        const riseProgress = (progress - 0.25) / 0.10;
+        return 0.45 + (riseProgress * 0.35); // 0.45 → 0.8
+      } else if (progress < 0.85) {
+        return 0.80; // Sustained peak (50%)
+      } else {
+        // Cool down (15%)
+        const coolProgress = (progress - 0.85) / 0.15;
+        return 0.80 - (coolProgress * 0.25); // 0.8 → 0.55
+      }
 
     case 'steady':
     default:
-      // Maintain consistent energy
+      // Maintain consistent energy (background music)
       return 0.6;
   }
 };
@@ -82,19 +142,26 @@ export const optimizeTrackOrder = (
       const candidate = remaining[i];
       let score = 0;
 
-      // Transition quality (key + BPM compatibility)
-      const transitionScore = scoreTransition(
+      // Transition quality (key + BPM compatibility) - genre-aware
+      const transitionScoreResult = scoreTransition(
         {
           camelotKey: currentTrack.camelotKey || '0A',
           bpm: currentTrack.tempo || currentTrack.mikData?.bpm || 120,
           energy: currentTrack.energy,
+          genre: (currentTrack as any).genre, // Genre field if available
         },
         {
           camelotKey: candidate.camelotKey || '0A',
           bpm: candidate.tempo || candidate.mikData?.bpm || 120,
           energy: candidate.energy,
+          genre: (candidate as any).genre, // Genre field if available
         }
       );
+
+      // Extract total score (handle both old number format and new object format)
+      const transitionScore = typeof transitionScoreResult === 'number'
+        ? transitionScoreResult
+        : transitionScoreResult.total;
 
       score += transitionScore * (prioritizeHarmonic && prioritizeBPM ? 1.0 : 0.5);
 

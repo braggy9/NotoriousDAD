@@ -1,0 +1,16 @@
+{
+  "" : {
+    "const-values" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineDispatch.build/Objects-normal/arm64/OpenCombineDispatch-primary.swiftconstvalues",
+    "dependencies" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineDispatch.build/Objects-normal/arm64/OpenCombineDispatch-primary.d",
+    "diagnostics" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineDispatch.build/Objects-normal/arm64/OpenCombineDispatch-primary.dia",
+    "emit-module-dependencies" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineDispatch.build/Objects-normal/arm64/OpenCombineDispatch-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineDispatch.build/Objects-normal/arm64/OpenCombineDispatch-primary-emit-module.dia",
+    "pch" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineDispatch.build/Objects-normal/arm64/OpenCombineDispatch-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineDispatch.build/Objects-normal/arm64/OpenCombineDispatch-primary.swiftdeps"
+  },
+  "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/SourcePackages/checkouts/OpenCombine/Sources/OpenCombineDispatch/DispatchQueue+Scheduler.swift" : {
+    "index-unit-output-path" : "/OpenCombine.build/Release-iphoneos/OpenCombineDispatch.build/Objects-normal/arm64/DispatchQueue+Scheduler.o",
+    "llvm-bc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineDispatch.build/Objects-normal/arm64/DispatchQueue+Scheduler.bc",
+    "object" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineDispatch.build/Objects-normal/arm64/DispatchQueue+Scheduler.o"
+  }
+}

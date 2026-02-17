@@ -1,0 +1,12 @@
+{
+  "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/SourcePackages/checkouts/swift-crypto/Sources/Crypto/AEADs/AES/GCM/AES-GCM.swift" : {
+    "abi-baseline-json" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-crypto.build/Release-iphoneos/Crypto.build/Objects-normal/arm64/Crypto.abi.json",
+    "const-values" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-crypto.build/Release-iphoneos/Crypto.build/Objects-normal/arm64/Crypto-primary.swiftconstvalues",
+    "dependencies" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-crypto.build/Release-iphoneos/Crypto.build/Objects-normal/arm64/Crypto-primary.d",
+    "diagnostics" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-crypto.build/Release-iphoneos/Crypto.build/Objects-normal/arm64/Crypto-primary.dia",
+    "objc-header" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-crypto.build/Release-iphoneos/Crypto.build/Objects-normal/arm64/Crypto-Swift.h",
+    "swiftdoc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-crypto.build/Release-iphoneos/Crypto.build/Objects-normal/arm64/Crypto.swiftdoc",
+    "swiftmodule" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-crypto.build/Release-iphoneos/Crypto.build/Objects-normal/arm64/Crypto.swiftmodule",
+    "swiftsourceinfo" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-crypto.build/Release-iphoneos/Crypto.build/Objects-normal/arm64/Crypto.swiftsourceinfo"
+  }
+}

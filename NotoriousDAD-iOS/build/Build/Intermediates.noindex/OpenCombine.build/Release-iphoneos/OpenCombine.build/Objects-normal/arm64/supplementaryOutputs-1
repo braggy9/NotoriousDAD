@@ -1,0 +1,12 @@
+{
+  "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/SourcePackages/checkouts/OpenCombine/Sources/OpenCombine/AnyCancellable.swift" : {
+    "abi-baseline-json" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombine.build/Objects-normal/arm64/OpenCombine.abi.json",
+    "const-values" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombine.build/Objects-normal/arm64/OpenCombine-primary.swiftconstvalues",
+    "dependencies" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombine.build/Objects-normal/arm64/OpenCombine-primary.d",
+    "diagnostics" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombine.build/Objects-normal/arm64/OpenCombine-primary.dia",
+    "objc-header" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombine.build/Objects-normal/arm64/OpenCombine-Swift.h",
+    "swiftdoc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombine.build/Objects-normal/arm64/OpenCombine.swiftdoc",
+    "swiftmodule" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombine.build/Objects-normal/arm64/OpenCombine.swiftmodule",
+    "swiftsourceinfo" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombine.build/Objects-normal/arm64/OpenCombine.swiftsourceinfo"
+  }
+}

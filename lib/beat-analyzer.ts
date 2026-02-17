@@ -250,15 +250,21 @@ export function detectSegments(
 
   if (duration === 0) return segments;
 
-  // Calculate average energy in windows
-  const windowSize = 8; // 8 seconds
+  // Calculate average energy in windows (ENHANCED: 2-second windows for finer resolution)
+  const windowSize = 2; // 2 seconds (down from 8s for better drop detection)
   const windowSamples = windowSize * sampleRate;
 
-  const windowEnergies: { time: number; energy: number }[] = [];
+  const windowEnergies: { time: number; energy: number; energyDelta: number }[] = [];
   for (let i = 0; i < energyCurve.length; i += windowSamples) {
     const window = energyCurve.slice(i, i + windowSamples);
     const avgEnergy = window.reduce((a, b) => a + b, 0) / window.length;
-    windowEnergies.push({ time: i / sampleRate, energy: avgEnergy });
+
+    // Calculate energy delta (rate of change) for buildup/drop detection
+    const prevWindow = i > 0 ? energyCurve.slice(i - windowSamples, i) : window;
+    const prevEnergy = prevWindow.reduce((a, b) => a + b, 0) / prevWindow.length;
+    const energyDelta = avgEnergy - prevEnergy;
+
+    windowEnergies.push({ time: i / sampleRate, energy: avgEnergy, energyDelta });
   }
 
   if (windowEnergies.length < 3) {
@@ -274,32 +280,64 @@ export function detectSegments(
     ];
   }
 
-  // Classify segments based on relative energy
+  // Classify segments based on relative energy (ENHANCED: pre-drop/post-drop detection)
   const avgEnergy = windowEnergies.reduce((a, b) => a + b.energy, 0) / windowEnergies.length;
+  const maxEnergy = Math.max(...windowEnergies.map((w) => w.energy));
+
+  // Find major drops (sharp energy increases)
+  const dropThreshold = maxEnergy * 0.85;
+  const dropIndices: number[] = [];
+
+  for (let i = 1; i < windowEnergies.length - 1; i++) {
+    const w = windowEnergies[i];
+    const prevW = windowEnergies[i - 1];
+
+    // Drop detection: high energy AND significant increase from previous
+    if (w.energy >= dropThreshold && w.energyDelta > avgEnergy * 0.15) {
+      dropIndices.push(i);
+    }
+  }
 
   for (let i = 0; i < windowEnergies.length; i++) {
     const w = windowEnergies[i];
+    const prevW = windowEnergies[i - 1];
     const nextW = windowEnergies[i + 1];
     const endTime = nextW ? nextW.time : duration;
 
     let type: TrackSegment['type'] = 'unknown';
 
-    // Classify based on position and energy
+    // Classify based on position, energy, and energy delta
     const relPosition = w.time / duration;
     const relEnergy = w.energy / avgEnergy;
 
+    // Position-based classification
     if (relPosition < 0.1) {
       type = 'intro';
     } else if (relPosition > 0.9) {
       type = 'outro';
-    } else if (relEnergy > 1.2) {
-      type = 'drop';
-    } else if (relEnergy < 0.6) {
-      type = 'breakdown';
-    } else if (i > 0 && windowEnergies[i - 1].energy < w.energy * 0.8) {
-      type = 'buildup';
-    } else {
-      type = 'verse';
+    }
+    // Drop-aware classification (NEW)
+    else {
+      const isNearDrop = dropIndices.some((dropIdx) => Math.abs(dropIdx - i) <= 1);
+      const isPreDrop = dropIndices.some((dropIdx) => dropIdx - i === 1);
+      const isPostDrop = dropIndices.some((dropIdx) => dropIdx - i === -1);
+      const isDrop = dropIndices.includes(i);
+
+      if (isDrop) {
+        type = 'drop'; // Main drop
+      } else if (isPreDrop && w.energyDelta > avgEnergy * 0.05) {
+        type = 'buildup'; // Rising energy before drop
+      } else if (isPostDrop && w.energyDelta < -avgEnergy * 0.05) {
+        type = 'breakdown'; // Falling energy after drop
+      } else if (relEnergy > 1.2) {
+        type = 'drop'; // High energy section
+      } else if (relEnergy < 0.6) {
+        type = 'breakdown'; // Low energy section
+      } else if (w.energyDelta > avgEnergy * 0.1) {
+        type = 'buildup'; // Rising energy
+      } else {
+        type = 'verse'; // Normal energy section
+      }
     }
 
     const beatsInSegment = beats.filter((b) => b >= w.time && b < endTime).length;

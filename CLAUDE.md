@@ -62,10 +62,12 @@ npx tsx scripts/match-apple-music-v2.ts
 
 2. **Audio Mix Generator** (`/api/generate-mix`)
    - Input: Natural language prompt + track count
-   - Uses: **ONLY files on Hetzner server** (12,669→26,237 files)
+   - Uses: **ONLY files on Hetzner server** (29,024 files, 209GB)
+   - Analyzed: 4,978 tracks (17%) with BPM/key/genre metadata
    - Output: **Downloadable MP3 mix file** (with crossfades)
    - Limited to tracks physically stored on server
    - Cannot use Spotify/Apple Music tracks
+   - **Note**: Full library analysis in progress (28,000 files)
 
 See `MIX-GENERATION-ANALYSIS.md` for detailed comparison and pipeline explanation.
 
@@ -155,11 +157,13 @@ Selection Score = sum of:
 - Output: Spotify playlist URL (streaming)
 
 ### Audio Mix Generation (File-Based)
-- `app/api/generate-mix/route.ts` - Audio mix generation endpoint
+- `app/api/generate-mix/route.ts` - Audio mix generation endpoint with genre filtering
 - `lib/mix-engine.ts` - FFmpeg-based audio mixing with crossfades
 - `lib/audio-library-indexer.ts` - Server audio library management
 - `lib/beat-analyzer.ts` - BPM detection via aubio
-- Uses: **ONLY files on Hetzner server** (12,669→26,237 files)
+- `scripts/add-genre-to-analysis.ts` - Genre extraction from audio file metadata (deployed Feb 9, 2026)
+- `scripts/analyze-local-library.ts` - Portable analysis script for iCloud Drive files
+- Uses: **ONLY files on Hetzner server** (29,024 files, 209GB)
 - Output: Downloadable MP3 mix file
 - **See**: `MIX-GENERATION-ANALYSIS.md` for detailed pipeline explanation
 
@@ -379,11 +383,12 @@ The server hosts your actual audio files for mix generation (separate from Spoti
 
 ### Overview
 - **Location**: `/var/www/notorious-dad/audio-library/` (symlink to `/mnt/HC_Volume_104378843`)
-- **Current**: **13,016 files (114GB)** - 44.9% of MIK library
-- **Target**: ~26,237 files (90% of MIK library, under 20MB size limit)
-- **Size Limit**: Under 20MB per file (excludes 2,728 files = 9.4% of library)
-- **Storage**: 100GB volume with 135GB free (can expand to all 28,965 files if needed)
-- **Analysis**: BPM detection via aubio, key detection via MIK tags + keyfinder-cli
+- **Total Files**: **29,024 files (209GB)** on Hetzner server
+- **Analyzed**: **4,978 tracks (17%)** - remaining 24,046 tracks need analysis
+- **Genre Tags**: **3,046 tracks (68% of analyzed)** - extracted Feb 9, 2026 via `add-genre-to-analysis.ts`
+- **Size Limit**: Under 20MB per file (excludes large DJ mixes)
+- **Storage**: 100GB volume with room to grow
+- **Analysis**: BPM detection via aubio, key detection via MIK tags + keyfinder-cli, genre from ID3 tags
 - **Data**: `/var/www/notorious-dad/data/audio-library-analysis.json`
 - **Important**: Use `-L` flag with find/du to follow symlinks (e.g., `find -L /path` or `du -shL /path`)
 
@@ -407,6 +412,22 @@ bash /var/www/notorious-dad/scripts/analyze-library.sh
 
 # Monitor and auto-restart analysis if it stops
 bash /var/www/notorious-dad/scripts/monitor-analysis.sh
+
+# Extract genre tags from existing analyzed files (deployed Feb 9, 2026)
+npx tsx /var/www/notorious-dad/scripts/add-genre-to-analysis.ts
+```
+
+### Portable Analysis (Other Mac via iCloud Drive)
+```bash
+# Run full library analysis on any Mac with iCloud Drive access
+# See ANALYZE-ON-OTHER-MAC.md for complete setup instructions
+
+cd ~/Desktop  # or wherever script is copied
+tsx analyze-local-library.ts
+
+# After completion (~8-15 hours for 28,000 files):
+rsync -avz ~/Desktop/audio-library-analysis.json root@178.156.214.56:/var/www/notorious-dad/data/
+ssh root@178.156.214.56 'cd /var/www/notorious-dad && pm2 restart notorious-dad'
 ```
 
 ### Analysis Data Format
@@ -426,7 +447,8 @@ bash /var/www/notorious-dad/scripts/monitor-analysis.sh
       "energy": 5,
       "duration": 240.5,
       "fileSize": 8500000,
-      "analyzedAt": "2026-01-06T10:00:00Z"
+      "analyzedAt": "2026-01-06T10:00:00Z",
+      "genre": "House"  // NEW (v4): Added Feb 9, 2026 via add-genre-to-analysis.ts
     }
   ]
 }
@@ -541,10 +563,13 @@ All platforms use **semantic versioning** (MAJOR.MINOR.PATCH):
 | Platform | Version | Build | Location | Display |
 |----------|---------|-------|----------|---------|
 | **Web App** | 2.2.0 | N/A | `package.json` | Footer on main page |
-| **iOS App** | 2.2.0 | **16** | `Info.plist` CFBundleVersion | Settings → About → Version |
+| **iOS App** | 2.2.0 | **20** | `Info.plist` CFBundleVersion | Settings → About → Version |
 | **macOS App** | 2.2.0 | **13** | `Info.plist` CFBundleVersion | Settings → About → Version |
 
 **Version History:**
+- **2.2.0 Build 20** (2026-02-13): **Spotify Playlist Connection FIXED** - iOS Mix Generator now includes Spotify `refresh_token` when using playlist URL feature. Users can paste Spotify playlist URLs to generate audio mixes from those tracks. Loads token from bundled `spotify-tokens.json`. Synced with Phase 1 server enhancements (all 10 music theory improvements automatically available).
+- **2.2.0 Build 19** (2026-02-10): **Download button FIXED** - Fixed filename extraction (now parses URL query parameter instead of temp name) and threading issue (completion handlers now dispatch to main thread). Share sheet now works correctly. Genre filtering from Build 18 remains deployed on server.
+- **2.2.0 Build 18** (2026-02-09): Download button debug logging - added comprehensive emoji-prefixed logging to `AudioPlayerManager.swift` and `MixGeneratorViewRedesign.swift`, added red error banner UI, investigating download timeout issue. **Genre filtering fixed on server** - `add-genre-to-analysis.ts` deployed, 3,046 tracks tagged (68% of analyzed), `filterByGenre()` now uses actual metadata.
 - **2.2.0 Build 16** (2026-01-23): Enhanced debugging and monitoring - fixed server health check endpoint, added comprehensive debug logging throughout mix generation pipeline, improved error handling and reporting. **Server deployment complete and verified working.**
 - **2.2.0 Build 13** (2026-01-22): **CRITICAL FIX** - Enhanced database (9,982 tracks) now properly included in both apps, track library count corrected, Playlist Generator 401 auth issue identified (requires new Anthropic API key)
 - **2.2.0 Build 12** (2026-01-21): Mashup Finder integration complete, Hetzner server fixed and stable, iOS archived for TestFlight, macOS deployed to /Applications/
@@ -564,6 +589,13 @@ When incrementing versions, update all three files:
 
 | Date | Change |
 |------|--------|
+| **Feb 13, 2026** | **Build 20 - Spotify Playlist Fix**: Fixed iOS Mix Generator to include `refresh_token` when using Spotify playlist URLs. Added `loadSpotifyRefreshToken()` helper function to load token from bundled `spotify-tokens.json`. Now users can paste Spotify playlist URLs and generate audio mixes from those tracks. Also confirmed iOS/macOS apps are up-to-date with Phase 1 server enhancements (no client code changes needed - all improvements are server-side). |
+| **Feb 9, 2026** | **Genre Filtering Fix**: Created `scripts/add-genre-to-analysis.ts` to extract genre tags from audio file metadata via ffprobe. Ran on server: 3,046 tracks (68% of analyzed) now have genre tags. Updated `app/api/generate-mix/route.ts` `filterByGenre()` to use actual genre tags instead of AI guessing. Tested successfully: "disco tracks" prompt now finds 27 tracks vs 0 before. |
+| **Feb 9, 2026** | **Genre Data Structure**: Added `genre?: string` field to CloudAudioTrack interface, passed through `cloudTrackToIndexed()` function, with genre aliases (house → deep house, tech house, etc.) for flexible matching. Falls back to Claude AI only for tracks without genre tags. |
+| **Feb 9, 2026** | **Build 18**: Added comprehensive debug logging to iOS download button (`AudioPlayerManager.swift` and `MixGeneratorViewRedesign.swift`) with emoji prefixes for easy Console.app filtering. Added red error banner UI to display download failures. Investigating download timeout issue. |
+| **Feb 9, 2026** | **Portable Analysis Script**: Created `scripts/analyze-local-library.ts` for running full library analysis on other Mac via iCloud Drive. Analyzes ~28,000 files (8-15 hours), extracts genre/duration/artist/title/BPM from tags, saves to Desktop, with rsync upload command. Documentation in `ANALYZE-ON-OTHER-MAC.md`. |
+| **Feb 9, 2026** | **Library Status Documented**: Hetzner server has 29,024 files (209GB) but only 4,978 analyzed (17%). Identified 24,046 unanalyzed tracks. No background processes running. Local MIK-Analyzed has 27,995 files (33GB). Server has +1,029 additional files and +176GB more data. |
+| **Feb 9, 2026** | **Genre Distribution**: Top genres in analyzed portion: Alternative (555), Electronic (404), Pop (307), Indie (236), Rock (221), Dance (185), Disco/Nu-Disco (27). Limited disco/house content identified. |
 | Jan 23, 2026 | **Build 16**: Enhanced debugging/monitoring - fixed health check endpoint, comprehensive logging, improved error handling |
 | Jan 22, 2026 | **Build 13**: Critical database fix - enhanced database (9,982 tracks) properly bundled in apps, Playlist Generator API key issue identified |
 | Jan 21, 2026 | **Build 12**: Mashup Finder deployed to iOS/macOS, Hetzner server rebuilt and stable, enhanced database confirmed working |
@@ -866,6 +898,72 @@ The iOS app uses a custom design system defined in `AppTheme.swift`:
 ---
 
 ## Known Issues
+
+### ✅ FIXED: iOS Download Button Not Working (2026-02-10)
+
+**Issue**: Download button didn't work - download completed to 100% but showed black screen instead of share sheet.
+
+**Root Causes Found:**
+1. **Filename extraction**: Code tried to use temp download name (`CFNetworkDownload_qgG3B1.tmp`) instead of extracting actual filename from URL query parameter
+2. **Threading issue**: URLSession delegate callbacks happen on background thread, but completion handler updated SwiftUI @Published properties without dispatching to main thread → black screen/hang
+
+**Fix Applied** (Build 19):
+1. **Filename extraction** (`AudioPlayerManager.swift:165-183`):
+   - Store original download URL in `downloadURL` property
+   - Extract `file` query parameter from URL (`?file=House-Mix.mp3`)
+   - Use extracted filename as destination instead of temp name
+
+2. **Threading fix** (`AudioPlayerManager.swift:186-195`):
+   - Wrap all completion handler calls in `DispatchQueue.main.async`
+   - All SwiftUI state updates now happen on main thread
+   - Share sheet displays correctly
+
+**Files Modified:**
+- `NotoriousDAD-iOS/NotoriousDAD/Services/AudioPlayerManager.swift`
+
+**Status**: ✅ FIXED - Download completes, filename correct, share sheet appears (awaiting final user test)
+
+### ✅ FIXED: Genre Mismatch (House/Disco → Indie/Electronic) (2026-02-09)
+
+**Issue**: Mix requested "upbeat house and disco" but generated indie/electronic tracks.
+
+**Root Cause**: Audio library analysis didn't extract genre tags from files. `filterByGenre()` sent track list to Claude AI to guess genres from artist names only.
+
+**Fix Applied**:
+1. Created `scripts/add-genre-to-analysis.ts` - extracts genre from audio file metadata via ffprobe
+2. Ran on server - added genre tags to 3,046 tracks (68% of analyzed tracks)
+3. Updated `app/api/generate-mix/route.ts` - `filterByGenre()` now uses actual genre tags
+4. Deployed to server and tested successfully
+
+**Results**:
+- Test prompt "disco tracks" now finds 27 disco tracks (vs 0 before)
+- Genre filtering works correctly
+- **Caveat**: Only 4,978 tracks analyzed out of 29,024 total on server (17%)
+- Full library analysis running on other Mac (~8-15 hours for 28,000 files)
+
+**Genre Distribution (analyzed portion)**:
+- Alternative: 555 tracks
+- Electronic: 404 tracks
+- Pop: 307 tracks
+- Indie: 236 tracks
+- Rock: 221 tracks
+- Dance: 185 tracks
+- Disco/Nu-Disco: 27 tracks (limited)
+
+### ⚠️ LOW PRIORITY: Anthropic API Key Expired (2026-02-09)
+
+**Issue**: Playlist Generator shows 401 authentication error.
+
+**Affects**:
+- **Spotify Playlist Generator** (`/api/generate-playlist`) - Creates Spotify playlist URLs
+- Does NOT affect Mix Generator (audio MP3 files)
+
+**Fix Needed**: Get new API key from console.anthropic.com and update `.env.local`:
+```bash
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+**Status**: Not urgent - Mix Generator (primary feature) works fine. Playlist Generator is separate feature.
 
 ### ✅ FIXED: Audio Mix Duration Issue (2026-01-14)
 

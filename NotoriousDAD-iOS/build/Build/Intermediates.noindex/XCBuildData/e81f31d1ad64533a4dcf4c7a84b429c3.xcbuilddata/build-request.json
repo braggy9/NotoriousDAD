@@ -1,0 +1,71 @@
+{
+  "buildCommand" : {
+    "command" : "build",
+    "skipDependencies" : false,
+    "style" : "buildOnly"
+  },
+  "configuredTargets" : [
+    {
+      "guid" : "c5c06199f71126ccc8b5cb036c3616a5bfe9fdc9d83346fb0f9dc18bec2216d4"
+    }
+  ],
+  "containerPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/NotoriousDAD.xcodeproj",
+  "continueBuildingAfterErrors" : false,
+  "dependencyScope" : "workspace",
+  "enableIndexBuildArena" : false,
+  "hideShellScriptEnvironment" : false,
+  "parameters" : {
+    "action" : "build",
+    "activeArchitecture" : "arm64",
+    "activeRunDestination" : {
+      "disableOnlyActiveArch" : false,
+      "platform" : "iphoneos",
+      "sdk" : "iphoneos26.2",
+      "sdkVariant" : "iphoneos",
+      "supportedArchitectures" : [
+        "arm64e",
+        "arm64",
+        "x86_64"
+      ],
+      "targetArchitecture" : "arm64"
+    },
+    "arenaInfo" : {
+      "buildIntermediatesPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex",
+      "buildProductsPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Products",
+      "derivedDataPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build",
+      "indexDataStoreFolderPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Index.noindex/DataStore",
+      "indexEnableDataStore" : true,
+      "indexPCHPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Index.noindex/PrecompiledHeaders",
+      "pchPath" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/PrecompiledHeaders"
+    },
+    "configurationName" : "Release",
+    "overrides" : {
+      "commandLine" : {
+        "table" : {
+
+        }
+      },
+      "synthesized" : {
+        "table" : {
+          "ACTION" : "build",
+          "ASSETCATALOG_FILTER_FOR_DEVICE_MODEL" : "MacFamily20,1",
+          "ASSETCATALOG_FILTER_FOR_DEVICE_OS_VERSION" : "26.3",
+          "ASSETCATALOG_FILTER_FOR_THINNING_DEVICE_CONFIGURATION" : "MacFamily20,1",
+          "BUILD_ACTIVE_RESOURCES_ONLY" : "YES",
+          "ENABLE_PREVIEWS" : "NO",
+          "ENABLE_XOJIT_PREVIEWS" : "YES",
+          "TARGET_DEVICE_IDENTIFIER" : "00008142-001E31581A22401C",
+          "TARGET_DEVICE_MODEL" : "Mac17,2",
+          "TARGET_DEVICE_OS_VERSION" : "26.3",
+          "TARGET_DEVICE_PLATFORM_NAME" : "macosx"
+        }
+      }
+    }
+  },
+  "schemeCommand" : "launch",
+  "showNonLoggedProgress" : true,
+  "useDryRun" : false,
+  "useImplicitDependencies" : true,
+  "useLegacyBuildLocations" : false,
+  "useParallelTargets" : true
+}

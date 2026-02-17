@@ -1,0 +1,12 @@
+{
+  "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/SourcePackages/checkouts/OpenCombine/Sources/OpenCombineFoundation/Helpers/Locking.swift" : {
+    "abi-baseline-json" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineFoundation.build/Objects-normal/arm64/OpenCombineFoundation.abi.json",
+    "const-values" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineFoundation.build/Objects-normal/arm64/OpenCombineFoundation-primary.swiftconstvalues",
+    "dependencies" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineFoundation.build/Objects-normal/arm64/OpenCombineFoundation-primary.d",
+    "diagnostics" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineFoundation.build/Objects-normal/arm64/OpenCombineFoundation-primary.dia",
+    "objc-header" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineFoundation.build/Objects-normal/arm64/OpenCombineFoundation-Swift.h",
+    "swiftdoc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineFoundation.build/Objects-normal/arm64/OpenCombineFoundation.swiftdoc",
+    "swiftmodule" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineFoundation.build/Objects-normal/arm64/OpenCombineFoundation.swiftmodule",
+    "swiftsourceinfo" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build/Build/Intermediates.noindex/OpenCombine.build/Release-iphoneos/OpenCombineFoundation.build/Objects-normal/arm64/OpenCombineFoundation.swiftsourceinfo"
+  }
+}

@@ -302,3 +302,105 @@ function execFFmpegAsync(command: string): Promise<void> {
 If it works: Mix generation is fixed across all devices!
 If it still times out: Check server logs - may need worker thread approach
 
+---
+
+## ❌ TEST RESULTS: Spawn-Based Fix Insufficient (6:50 AM AEDT)
+
+**Tested:** Automated test with `test-mix-generation.sh`
+
+**Results:**
+- ✅ Server restarted successfully with spawn-based code
+- ✅ spawn() implementation is architecturally correct
+- ❌ Server STILL times out during mix generation
+- ❌ FFmpeg at 100% CPU continues to block event loop
+
+**Test Output:**
+```
+Poll 1: ✅ 2.2s response
+Poll 2: ❌ 60s timeout
+Poll 3: ❌ 60s timeout
+Poll 4: ❌ 60s timeout
+Health check: ❌ 5s timeout
+```
+
+**Root Cause Confirmed:**
+Even with spawn(), when FFmpeg uses 100% of one CPU core, Node.js single-threaded event loop cannot process HTTP requests. The problem is **CPU saturation**, not execution model.
+
+**Why Previous Fixes All Failed:**
+1. execSync → execAsync: Still blocks at CPU saturation
+2. Extended timeouts (300s): Doesn't solve blocking
+3. spawn() with proper async: **Still blocks when CPU maxed**
+
+All these fixes assumed the problem was synchronous execution. The **real problem** is that a single-threaded event loop cannot handle HTTP when CPU is monopolized by child process.
+
+---
+
+## 🔧 The Real Solution (Not Yet Implemented)
+
+**Option 1: Worker Threads** (Recommended)
+```typescript
+import { Worker } from 'worker_threads';
+
+// Run FFmpeg in separate thread
+const worker = new Worker('./mix-worker.js', {
+  workerData: { command, jobId }
+});
+
+// Main thread stays free for HTTP
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' }); // Always responsive!
+});
+```
+
+**Estimated Work:** 2-3 hours
+- Create worker script for FFmpeg execution
+- Update mix-engine to use worker threads
+- Handle worker communication and errors
+- Test across all scenarios
+
+**Option 2: Separate Worker Process** (Production-Grade)
+- Dedicated Node process for mix generation
+- Redis/database job queue
+- Scalable to multiple workers
+- **Estimated Work:** 4-5 hours
+
+**Option 3: Accept Current Behavior**
+- Mix generation DOES complete successfully on server
+- Apps timeout waiting, but mixes finish
+- Users can check `/output` folder for completed files
+- Not ideal UX, but functional
+
+---
+
+## 📊 Current System Status
+
+### What Works Perfectly ✅
+- **Playlist Generator:** Creates Spotify playlists instantly (48k+ track pool)
+- **Mashup Finder:** 642k mashup pairs, works great
+- **Track Library:** 9,982 tracks with full metadata
+- **Server Health:** Running stable at mixmaster.mixtape.run
+- **Web App:** Playlist generation works fine
+
+### What Needs Worker Threads ⚠️
+- **Mix Generator (iOS):** Times out, but mix completes on server
+- **Mix Generator (macOS):** Same as iOS
+- **Mix Generator (Web):** May timeout in browser, but completes
+
+---
+
+## 💡 Recommendation
+
+**For Immediate Use:**
+Use **Playlist Generator** (works perfectly):
+- Tab 1 - "Playlist" in iOS/macOS apps
+- Main page on web app
+- Same AI curation and harmonic mixing
+- Creates Spotify playlists you can stream instantly
+
+**For Downloadable Mixes:**
+Worker threads implementation required (2-3 hours of focused work)
+
+---
+
+**Final Status:** Build 16 deployed, tested, and documented. Playlist generation works perfectly. Mix generation requires architectural refactor for proper operation.
+

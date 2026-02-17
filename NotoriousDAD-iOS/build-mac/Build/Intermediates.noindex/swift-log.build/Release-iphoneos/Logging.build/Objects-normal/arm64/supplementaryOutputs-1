@@ -1,0 +1,12 @@
+{
+  "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/SourcePackages/checkouts/swift-log/Sources/Logging/Locks.swift" : {
+    "abi-baseline-json" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-log.build/Release-iphoneos/Logging.build/Objects-normal/arm64/Logging.abi.json",
+    "const-values" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-log.build/Release-iphoneos/Logging.build/Objects-normal/arm64/Logging-primary.swiftconstvalues",
+    "dependencies" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-log.build/Release-iphoneos/Logging.build/Objects-normal/arm64/Logging-primary.d",
+    "diagnostics" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-log.build/Release-iphoneos/Logging.build/Objects-normal/arm64/Logging-primary.dia",
+    "objc-header" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-log.build/Release-iphoneos/Logging.build/Objects-normal/arm64/Logging-Swift.h",
+    "swiftdoc" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-log.build/Release-iphoneos/Logging.build/Objects-normal/arm64/Logging.swiftdoc",
+    "swiftmodule" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-log.build/Release-iphoneos/Logging.build/Objects-normal/arm64/Logging.swiftmodule",
+    "swiftsourceinfo" : "/Users/tombragg/dj-mix-generator/NotoriousDAD-iOS/build-mac/Build/Intermediates.noindex/swift-log.build/Release-iphoneos/Logging.build/Objects-normal/arm64/Logging.swiftsourceinfo"
+  }
+}

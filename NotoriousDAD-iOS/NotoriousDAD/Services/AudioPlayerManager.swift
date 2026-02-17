@@ -18,6 +18,7 @@ class AudioPlayerManager: ObservableObject {
     private var timeObserver: Any?
     private var downloadTask: URLSessionDownloadTask?
     private var downloadedFileURL: URL?
+    private var downloadURL: URL?  // Store original URL to extract filename
 
     init() {
         #if os(iOS)
@@ -87,17 +88,25 @@ class AudioPlayerManager: ObservableObject {
 
     /// Download audio file to temporary location (for sharing/saving)
     func downloadAudio(from url: URL, completion: @escaping (Result<URL, Error>) -> Void) {
+        print("🔽 AudioPlayerManager: Starting download from: \(url.absoluteString)")
+
         // If already downloaded, return cached file
         if let cachedURL = downloadedFileURL, FileManager.default.fileExists(atPath: cachedURL.path) {
+            print("✅ AudioPlayerManager: Using cached file at: \(cachedURL.path)")
             completion(.success(cachedURL))
             return
         }
 
         downloadProgress = 0
 
+        // Store original URL to extract filename later
+        self.downloadURL = url
+
+        print("📡 AudioPlayerManager: Creating download session...")
         let session = URLSession(configuration: .default, delegate: DownloadDelegate(manager: self), delegateQueue: nil)
         downloadTask = session.downloadTask(with: url)
         downloadTask?.resume()
+        print("▶️ AudioPlayerManager: Download task started")
 
         // Store completion handler
         self.downloadCompletion = completion
@@ -154,33 +163,60 @@ class AudioPlayerManager: ObservableObject {
     }
 
     fileprivate func handleDownloadComplete(url: URL) {
+        print("✅ AudioPlayerManager: Download completed to temp location: \(url.path)")
+
+        // Extract filename from original download URL query parameter
+        var fileName = "mix.mp3"  // Fallback
+        if let downloadURL = self.downloadURL,
+           let components = URLComponents(url: downloadURL, resolvingAgainstBaseURL: false),
+           let queryItems = components.queryItems,
+           let fileParam = queryItems.first(where: { $0.name == "file" }),
+           let fileValue = fileParam.value {
+            fileName = fileValue
+            print("📝 AudioPlayerManager: Extracted filename from URL: \(fileName)")
+        } else {
+            print("⚠️ AudioPlayerManager: Could not extract filename, using default")
+        }
+
         // Move to permanent location in temp directory
         let tempDir = FileManager.default.temporaryDirectory
-        let fileName = url.lastPathComponent.isEmpty ? "mix.mp3" : url.lastPathComponent
         let destinationURL = tempDir.appendingPathComponent(fileName)
+
+        print("📁 AudioPlayerManager: Moving to: \(destinationURL.path)")
 
         do {
             // Remove existing file if present
             if FileManager.default.fileExists(atPath: destinationURL.path) {
                 try FileManager.default.removeItem(at: destinationURL)
+                print("🗑️ AudioPlayerManager: Removed existing file")
             }
 
             try FileManager.default.moveItem(at: url, to: destinationURL)
             downloadedFileURL = destinationURL
-            downloadProgress = 1.0
-            downloadCompletion?(.success(destinationURL))
+
+            // Update UI on main thread
+            DispatchQueue.main.async {
+                self.downloadProgress = 1.0
+                print("✅ AudioPlayerManager: File moved successfully, calling completion")
+                self.downloadCompletion?(.success(destinationURL))
+            }
         } catch {
-            downloadCompletion?(.failure(error))
+            print("❌ AudioPlayerManager: Failed to move file: \(error.localizedDescription)")
+            DispatchQueue.main.async {
+                self.downloadCompletion?(.failure(error))
+            }
         }
     }
 
     fileprivate func handleDownloadProgress(progress: Double) {
+        print("📊 AudioPlayerManager: Download progress: \(Int(progress * 100))%")
         DispatchQueue.main.async {
             self.downloadProgress = progress
         }
     }
 
     fileprivate func handleDownloadError(error: Error) {
+        print("❌ AudioPlayerManager: Download error: \(error.localizedDescription)")
         DispatchQueue.main.async {
             self.error = error.localizedDescription
             self.downloadProgress = 0
