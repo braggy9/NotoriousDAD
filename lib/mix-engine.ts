@@ -139,21 +139,48 @@ function isFilePlayable(filePath: string): boolean {
 }
 
 /**
- * Build advanced filter sweep for professional transitions
+ * Build animated filter sweep for professional transitions
+ *
+ * Simulates a DJ progressively turning the high-pass filter knob:
+ * - Splits outgoing track into clean (dry) and heavily filtered (wet) paths
+ * - Uses time-varying volume expressions to crossfade dry→wet during transition
+ * - The sweep activates only during the crossfade zone (last N seconds of track 1)
+ * - Combined with acrossfade volume curves for a natural-sounding transition
  */
-function buildFilterSweepFilter(crossfadeDuration: number): string {
-  // High-pass sweep: gradually filter out low frequencies from outgoing track
-  // while bringing in full spectrum of incoming track
-  const halfDuration = crossfadeDuration / 2;
+function buildFilterSweepFilter(crossfadeDuration: number, track1TrimmedDuration?: number): string {
+  // If we know the trimmed duration, animate the sweep precisely over the crossfade zone
+  if (track1TrimmedDuration && track1TrimmedDuration > crossfadeDuration) {
+    const sweepStart = (track1TrimmedDuration - crossfadeDuration).toFixed(3);
+    const cd = crossfadeDuration.toFixed(3);
 
-  return `
-    [a1]asplit=2[a1_main][a1_filter];
-    [a1_filter]highpass=f=100:t=o:w=0.5[a1_hp];
-    [a1_hp]afade=t=out:st=0:d=${crossfadeDuration}[a1_fade];
-    [a1_main][a1_fade]amix=inputs=2:weights=1 0.3[a1_final];
-    [a2]afade=t=in:st=0:d=${crossfadeDuration}[a2_final];
-    [a1_final][a2_final]acrossfade=d=${crossfadeDuration}:c1=tri:c2=tri
-  `.trim().replace(/\s+/g, '');
+    // Ramp expression: 0 before sweep, linearly 0→1 during sweep, 1 after
+    const rampUp = `clip((t-${sweepStart})/${cd},0,1)`;
+    const rampDown = `1-clip((t-${sweepStart})/${cd},0,1)`;
+
+    return [
+      // Split outgoing into clean and filtered paths
+      `[a1]asplit=2[a1_dry][a1_wet]`,
+      // Steep high-pass at 2.5kHz (two cascaded filters for -24dB/oct rolloff)
+      `[a1_wet]highpass=f=2500:p=2,highpass=f=2500:p=2[a1_hpf]`,
+      // Clean signal: full volume before sweep, fades to 0 during crossfade
+      `[a1_dry]volume='${rampDown}':eval=frame[a1_d]`,
+      // Filtered signal: silent before sweep, fades to 1 during crossfade
+      `[a1_hpf]volume='${rampUp}':eval=frame[a1_w]`,
+      // Combine — normalize=0 preserves original levels
+      `[a1_d][a1_w]amix=inputs=2:normalize=0:duration=shortest[a1_final]`,
+      // Fade in incoming track
+      `[a2]afade=t=in:st=0:d=${crossfadeDuration}[a2_final]`,
+      // Crossfade the swept outgoing with incoming
+      `[a1_final][a2_final]acrossfade=d=${crossfadeDuration}:c1=tri:c2=tri`,
+    ].join(';');
+  }
+
+  // Fallback: simple crossfade with high-pass on outgoing (when duration unknown)
+  return [
+    `[a1]highpass=f=200:p=1[a1_final]`,
+    `[a2]afade=t=in:st=0:d=${crossfadeDuration}[a2_final]`,
+    `[a1_final][a2_final]acrossfade=d=${crossfadeDuration}:c1=exp:c2=log`,
+  ].join(';');
 }
 
 /**
@@ -179,14 +206,15 @@ function buildCrossfadeFilter(
   outSegment: string,
   inSegment: string,
   crossfadeDuration: number,
-  harmonicMatch: boolean
+  harmonicMatch: boolean,
+  track1TrimmedDuration?: number
 ): string {
   // ENHANCEMENT: Use advanced filters for specific segment combinations
 
   // Breakdown → Buildup: Filter sweep (professional DJ transition)
   if (outSegment === 'breakdown' && inSegment === 'buildup') {
     console.log(`    🎛️ Using filter sweep transition`);
-    return buildFilterSweepFilter(crossfadeDuration);
+    return buildFilterSweepFilter(crossfadeDuration, track1TrimmedDuration);
   }
 
   // Outro → Intro: EQ swap for smooth bass transition
@@ -328,22 +356,31 @@ function generateMixCommand(
   // Build filter complex
   const filters: string[] = [];
 
-  // Trim track 1 to end at mix out point + crossfade
-  filters.push(`[0:a]atrim=0:${track1MixOut + crossfadeSeconds},asetpts=PTS-STARTPTS[a1]`);
+  // EBU R128 loudness normalization — ensures consistent volume across tracks
+  // I=-14 = integrated loudness target (Spotify/YouTube standard)
+  // TP=-1 = true peak limit (prevents clipping)
+  // LRA=11 = loudness range target (preserves dynamics)
+  const loudnorm = 'loudnorm=I=-14:TP=-1:LRA=11';
 
-  // Trim and optionally tempo-adjust track 2
+  // Trim track 1 to end at mix out point + crossfade, then normalize
+  filters.push(`[0:a]atrim=0:${track1MixOut + crossfadeSeconds},asetpts=PTS-STARTPTS,${loudnorm}[a1]`);
+
+  // Track 1 trimmed duration (needed for animated filter sweep timing)
+  const track1TrimmedDuration = track1MixOut + crossfadeSeconds;
+
+  // Trim, optionally tempo-adjust, and normalize track 2
   if (bpmAdjust && Math.abs(bpmAdjust) > 0.5) {
-    // Adjust tempo using rubberband or atempo
+    // Adjust tempo using atempo
     const tempoFactor = 1 + bpmAdjust / 100;
     filters.push(
-      `[1:a]atrim=${track2MixIn}:,asetpts=PTS-STARTPTS,atempo=${tempoFactor}[a2]`
+      `[1:a]atrim=${track2MixIn}:,asetpts=PTS-STARTPTS,atempo=${tempoFactor},${loudnorm}[a2]`
     );
   } else {
-    filters.push(`[1:a]atrim=${track2MixIn}:,asetpts=PTS-STARTPTS[a2]`);
+    filters.push(`[1:a]atrim=${track2MixIn}:,asetpts=PTS-STARTPTS,${loudnorm}[a2]`);
   }
 
   // ENHANCEMENT: Advanced crossfade with filter effects
-  const crossfadeFilter = buildCrossfadeFilter(outSegment, inSegment, crossfadeSeconds, harmonicMatch);
+  const crossfadeFilter = buildCrossfadeFilter(outSegment, inSegment, crossfadeSeconds, harmonicMatch, track1TrimmedDuration);
   filters.push(`[a1][a2]${crossfadeFilter}[out]`);
 
   parts.push(`-filter_complex "${filters.join(';')}"`);
@@ -1006,8 +1043,9 @@ export async function mixPlaylist(
         console.log(`    ✓ v3 mix points: out=${track1.mixOutPoint?.toFixed(1) || 'auto'}s, in=${track2.mixInPoint?.toFixed(1) || '0'}s`);
       }
 
-      // Generate intermediate file path
-      const intermediatePath = path.join(tempDir, `mix_${i}.mp3`);
+      // Generate intermediate file path — use WAV (lossless) to prevent
+      // progressive quality degradation from repeated MP3 re-encoding
+      const intermediatePath = path.join(tempDir, `mix_${i}.wav`);
 
       // Pass segment info and harmonic match to mixing function
       const result = await mixTwoTracks(
