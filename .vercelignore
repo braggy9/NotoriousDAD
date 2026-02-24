@@ -28,5 +28,8 @@ build/
 # Exclude token files (contain secrets)
 .spotify-token.json
 
+# Exclude archived scripts
+scripts/archive/
+
 # Exclude git
 .git/

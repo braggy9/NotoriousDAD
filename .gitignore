@@ -1,79 +1,68 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
 
 # next.js
 /.next/
 /out/
 
-# production
+# production build
 /build
 
 # misc
 .DS_Store
 *.pem
 
-# debug
+# debug logs
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
+.env*.local
 
 # vercel
 .vercel
 
-# typescript
+# typescript build artifacts
 *.tsbuildinfo
 next-env.d.ts
-.env*.local
 
-# Claude Code local notes (personal, not shared)
+# Claude Code local notes
 CLAUDE.local.md
-.claude/CLAUDE.local.md
 
-# Symlinked documentation (local reference only)
-SPOTIFY-DOWNLOADER.md
-SPOTIFY-AUTOMATION.md
-
-# Large data files (too big for GitHub >100MB limit)
+# Large data files (regeneratable)
 *.xml
 data/apple-music-checkpoint.json
-logs/
+data/apple-music-matched.json
+data/apple-music-tracks.json
+data/auto-analysis-*.json
+data/audio-library-index.json
+data/audio-library-analysis.json
+data/failed-matches.json
+data/missing-tracks-*.json
 
-# CSV files (MIK exports - can be regenerated)
+# NOTE: These data files ARE tracked (critical for app):
+# data/matched-tracks.json
+# data/enhanced-track-database.json
+
+# CSV files
 *.csv
-
-# NOTE: data/matched-tracks.json (38MB) IS included - critical for mix quality!
 
 # Spotify tokens (sensitive)
 .spotify-token.json
 
-# API keys backup (ask Claude if needed)
+# Credentials
 .env.keys
 .digitalocean-token
 .do-server-password
 
-# macOS build artifacts
-**/\.build/
-
-# Large data files
-apple-music-checkpoint.json
+# macOS/Xcode build artifacts
+**/.build/
 build/SourcePackages/
-
-# iOS Build Archives
-builds/*.xcarchive/
+builds/
 *.xcarchive/
+
+# Output files
+output/
+logs/
+icon-variants/
