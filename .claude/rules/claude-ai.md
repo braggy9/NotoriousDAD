@@ -2,29 +2,27 @@
 
 ## Models Used
 
-- **Track Selection**: `claude-sonnet-4-5-20250929` (main model)
+- **NLP Constraint Extraction**: Claude Sonnet (via `@anthropic-ai/sdk`)
+- **Playlist Naming**: Claude Sonnet
 - Context window: ~200K tokens (enough for 500+ tracks with metadata)
 
-## Two-Pass System
+## Two-Pass System (Playlist Generator)
 
 **Pass 1: Constraint Extraction** (`lib/playlist-nlp.ts`)
 - Parse natural language prompts into structured constraints
 - Extract: Include artists, Reference artists, BPM range, energy, mood, genres, duration
-- Handle special inputs: Spotify playlist URLs, Beatport charts, Apple Music playlists
+- Handle special inputs: Spotify playlist URLs, Beatport charts
 
-**Pass 2: Track Selection** (`lib/enhanced-track-selector.ts`)
-- Select optimal tracks from filtered pool
-- Consider: harmonic compatibility, energy flow, user preferences, popularity
-- Prioritize user's liked songs and top artists
+**Pass 2: Deterministic Selection** (`app/api/generate-playlist/route.ts`)
+- Score tracks deterministically (no AI) using constraints from Pass 1
+- Consider: harmonic compatibility, energy flow, BPM range, genre
+- Track selection is NOT AI-based — it's a scoring algorithm
 
-## Prompt Engineering
+## Mix Generation NLP
 
-When building prompts for track selection:
-- Include track metadata: name, artist, key, BPM, energy, mood, danceability
-- Mark user's top artists with star emoji
-- Mark liked songs with heart emoji for prioritization
-- Emphasize "djay Pro automix" for transition focus
-- Request structured JSON output
+The audio mix generator (`app/api/generate-mix/route.ts`) also uses Claude for:
+- Parsing natural language prompts into track selection constraints
+- Same constraint extraction pattern as playlist generator
 
 ## Empty Constraint Handling
 
@@ -40,3 +38,10 @@ if (constraints.bpmRange?.min && constraints.bpmRange?.max) {
 
 `lib/playlist-namer.ts` uses Claude to generate creative names.
 Include context about mood, artists, and duration for better names.
+
+## AI NOT Used For
+
+- Track selection (deterministic scoring algorithm)
+- Audio mixing (FFmpeg filter chains)
+- Beat analysis (FFmpeg raw audio processing)
+- Transition decisions (segment-aware rules)

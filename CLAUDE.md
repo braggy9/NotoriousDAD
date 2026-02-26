@@ -2,8 +2,8 @@
 
 DJ mix generator with two core features: Spotify playlist generation (web/Vercel) and audio mix generation (Hetzner server).
 
-**GitHub**: https://github.com/braggy9/dj-mix-generator
-**Version**: 2.2.0 | **Stack**: Next.js 16, TypeScript, Tailwind CSS
+**GitHub**: https://github.com/braggy9/NotoriousDAD
+**Version**: 2.3.0 | **Stack**: Next.js 16, TypeScript, Tailwind CSS
 
 ## Commands
 
@@ -24,25 +24,50 @@ npm run lint         # ESLint
 
 ### 2. Audio Mix Generator (`/api/generate-mix`)
 - **Input**: Natural language prompt + track count
-- **Process**: Constraint parsing → track selection from server library → FFmpeg crossfade mixing
+- **Process**: Constraint parsing → track selection → beat analysis → FFmpeg mixing with pro transitions
 - **Data**: Audio files on Hetzner server (29K files, 209GB)
 - **Output**: Downloadable MP3 mix file
 - **Deploy**: Hetzner server at `mixmaster.mixtape.run`
 
+## Mix Engine Architecture
+
+The audio mix engine (`lib/mix-engine.ts`) uses FFmpeg for professional-quality transitions:
+
+- **Lossless intermediaries**: WAV between transitions, single MP3 encode at final output
+- **EBU R128 loudness normalization**: All tracks normalized to -14 LUFS (Spotify standard)
+- **Animated filter sweep**: Time-varying dry/wet crossfade simulating DJ high-pass filter knob
+- **EQ swap transitions**: Bass reduction on outgoing, enhancement on incoming (outro→intro)
+- **Genre-aware crossfades**: House/techno=32 bars, D&B=16, hip-hop/dubstep=8
+- **Phrase boundary enforcement**: Mix points snapped to 8/16-bar boundaries
+- **Segment-aware transitions**: Different effects for breakdown→buildup, drop→drop, etc.
+- **Beat analysis**: Energy envelope extraction, onset detection, segment classification (`lib/beat-analyzer.ts`)
+
+### Transition Types
+| Segments | Filter | Description |
+|----------|--------|-------------|
+| breakdown → buildup | Filter sweep | Animated high-pass 0→2.5kHz via volume expressions |
+| outro → intro | EQ swap | Bass swap between outgoing/incoming |
+| drop → drop | Quick cut | Minimal crossfade (≤2s) |
+| harmonic match | Exponential blend | Long smooth crossfade |
+| non-harmonic | Linear blend | Short crossfade to minimize clash |
+
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `app/api/generate-playlist/route.ts` | Spotify playlist generation (1,045 lines) |
-| `app/api/generate-mix/route.ts` | Audio mix generation |
-| `app/page.tsx` | Web UI (two tabs: Playlist + Mix) |
-| `lib/playlist-nlp.ts` | Claude NLP constraint extraction |
-| `lib/automix-optimizer.ts` | Camelot harmonic track ordering |
-| `lib/mix-engine.ts` | FFmpeg audio mixing engine |
-| `lib/camelot-wheel.ts` | Harmonic compatibility matrix |
-| `lib/genre-compatibility.ts` | Artist → genre family mapping |
-| `lib/playlist-namer.ts` | Claude-generated playlist names |
-| `lib/cover-art-generator.ts` | DALL-E cover art generation |
+| File | Lines | Purpose |
+|------|-------|---------|
+| `lib/mix-engine.ts` | 1,209 | FFmpeg audio mixing engine (core) |
+| `lib/beat-analyzer.ts` | 509 | Beat detection, energy analysis, segment classification |
+| `lib/automix-optimizer.ts` | 251 | Camelot harmonic track ordering |
+| `lib/ai-transition-optimizer.ts` | 379 | AI transition recommendations |
+| `lib/spotify-audio-analyzer.ts` | 374 | Spotify analysis integration (deprecated API) |
+| `app/api/generate-mix/route.ts` | 923 | Audio mix generation API |
+| `app/api/generate-playlist/route.ts` | 1,045 | Spotify playlist generation API |
+| `app/page.tsx` | 489 | Web UI (two tabs: Playlist + Mix) |
+| `lib/playlist-nlp.ts` | — | Claude NLP constraint extraction |
+| `lib/camelot-wheel.ts` | — | Harmonic compatibility matrix |
+| `lib/genre-compatibility.ts` | — | Artist → genre family mapping |
+| `lib/playlist-namer.ts` | — | Claude-generated playlist names |
+| `lib/cover-art-generator.ts` | — | DALL-E cover art generation |
 
 ## Data Files
 
@@ -51,7 +76,6 @@ npm run lint         # ESLint
 | `data/matched-tracks.json` | 14MB | Yes | MIK-analyzed tracks matched to Spotify |
 | `data/enhanced-track-database.json` | 5.7MB | Yes | Full track database (9,982 tracks) |
 | `data/apple-music-checkpoint.json` | 368MB | No | Apple Music → Spotify matches |
-| `apple-music-library.xml` | 77MB | No | Apple Music library export |
 
 ## Environment Variables
 
@@ -62,6 +86,7 @@ SPOTIFY_CLIENT_SECRET=...
 SPOTIFY_REDIRECT_URI=http://localhost:3000/api/auth/callback   # local
 ANTHROPIC_API_KEY=...      # Claude for NLP + naming
 OPENAI_API_KEY=...         # DALL-E cover art (optional)
+POSTGRES_URL=...           # Neon Postgres (track deduplication)
 ```
 
 Production redirect URI: `https://dj-mix-generator.vercel.app/api/auth/callback`

@@ -1,45 +1,30 @@
 # Documentation Index
 
-This project has extensive documentation. Reference these files for context:
+## Project Documentation
+- `CLAUDE.md` — Main project context (auto-loaded). Architecture, key files, deployments, algorithms.
+- `CLAUDE.local.md` — Personal notes, testing prompts, debugging cheatsheet (gitignored).
+- `README.md` — Public README with setup guide and architecture overview.
 
-## Architecture & Status
-- `@HANDOVER-BRIEF.md` - Latest architecture review (Dec 31, 2025)
-  - Critical issues identified
-  - Include vs Reference artist clarification
-  - Data pipeline diagrams
+## Claude Code Rules (`.claude/rules/`)
+- `dj-features.md` — Mix engine architecture, transition types, beat analysis, genre crossfades
+- `claude-ai.md` — Claude AI integration patterns, NLP constraint extraction
+- `spotify-api.md` — Spotify API patterns, token management, rate limits
 
-- `@IMPLEMENTATION-PLAN.md` - Corrected architecture plan
-  - New data flow diagrams
-  - Implementation steps
-  - Success criteria
-
-- `@PROJECT_STATUS_ANALYSIS_DEC_2025.md` - Comprehensive codebase analysis
-  - What's working
-  - Critical issues
-  - Recommended fixes with code examples
-  - File reference guide
-
-## Project Memory
-- `@CLAUDE.md` - Main project context (auto-loaded)
-- `@README.md` - Setup and deployment guide
-- `@claude-progress.txt` - Work-in-progress tracker
-
-## Data Files
-- `data/matched-tracks.json` - 4,080 MIK-analyzed tracks
-- `data/apple-music-checkpoint.json` - Apple Music → Spotify matching
-- `data/apple-music-matched.json` - Completed matches
-- `data/apple-music-tracks.json` - Parsed Apple Music library
+## Key Data Files
+- `data/matched-tracks.json` — 9,777 MIK-analyzed tracks matched to Spotify (14MB, tracked)
+- `data/enhanced-track-database.json` — 9,982 tracks with full metadata (5.7MB, tracked)
+- `data/apple-music-checkpoint.json` — ~40,000 Apple Music → Spotify matches (368MB, NOT tracked)
 
 ## When to Read What
 
-**Starting a new session?**
-→ Read `claude-progress.txt` first for current state
+**Working on audio mix quality?**
+→ Read `lib/mix-engine.ts` + `lib/beat-analyzer.ts` + `.claude/rules/dj-features.md`
 
 **Working on playlist generation?**
-→ Read `IMPLEMENTATION-PLAN.md` for data flow
+→ Read `app/api/generate-playlist/route.ts` + `lib/playlist-nlp.ts`
 
 **Debugging auth/API issues?**
-→ Read `PROJECT_STATUS_ANALYSIS_DEC_2025.md` for debug endpoints
+→ Read `.claude/rules/spotify-api.md` + debug endpoints in `app/api/debug/`
 
-**Understanding Include vs Reference?**
-→ Read `HANDOVER-BRIEF.md` section on user requirements
+**Deploying to Hetzner?**
+→ Read `scripts/deploy-hetzner.sh` + Hetzner section in `CLAUDE.md`
