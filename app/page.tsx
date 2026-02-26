@@ -100,12 +100,16 @@ function HomeContent() {
     }
   };
 
+  const [mixProgress, setMixProgress] = useState<{ progress: number; message: string } | null>(null);
+
   const handleGenerateMix = async (e: React.FormEvent) => {
     e.preventDefault();
     setMixLoading(true);
     setMixResult(null);
+    setMixProgress(null);
 
     try {
+      // Step 1: Submit the job
       const response = await fetch('/api/generate-mix', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -116,15 +120,54 @@ function HomeContent() {
 
       if (!response.ok) {
         setMixResult({ success: false, error: data.error || 'Failed to generate mix' });
-      } else {
+        setMixLoading(false);
+        return;
+      }
+
+      const jobId = data.jobId;
+      if (!jobId) {
+        // Legacy: API returned final result directly
         setMixResult(data);
-        // Refresh available mixes
         fetchAvailableMixes();
+        setMixLoading(false);
+        return;
+      }
+
+      // Step 2: Poll for completion
+      while (true) {
+        await new Promise(resolve => setTimeout(resolve, 3000)); // Poll every 3s
+
+        const statusRes = await fetch(`/api/mix-status/${jobId}`);
+        const status = await statusRes.json();
+
+        if (status.status === 'complete' && status.result) {
+          setMixResult({
+            success: true,
+            mixName: status.result.mixName,
+            mixUrl: status.result.mixUrl,
+            tracklist: status.result.tracklist,
+            duration: status.result.duration,
+            transitionCount: status.result.transitionCount,
+            harmonicPercentage: status.result.harmonicPercentage,
+          });
+          fetchAvailableMixes();
+          break;
+        } else if (status.status === 'failed') {
+          setMixResult({ success: false, error: status.error || 'Mix generation failed' });
+          break;
+        } else {
+          // Still processing — update progress
+          setMixProgress({
+            progress: status.progress || 0,
+            message: status.progressMessage || 'Processing...',
+          });
+        }
       }
     } catch (error) {
       setMixResult({ success: false, error: 'An error occurred while generating the mix' });
     } finally {
       setMixLoading(false);
+      setMixProgress(null);
     }
   };
 
@@ -389,12 +432,20 @@ function HomeContent() {
 
             {mixLoading && (
               <div className="bg-purple-50 p-4 rounded-lg mb-4">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 mb-2">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
-                  <p className="text-purple-700 text-sm">
-                    Generating mix... This may take a few minutes
+                  <p className="text-purple-700 text-sm font-medium">
+                    {mixProgress?.message || 'Starting mix generation...'}
                   </p>
                 </div>
+                {mixProgress && (
+                  <div className="w-full bg-purple-200 rounded-full h-2">
+                    <div
+                      className="bg-purple-600 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${mixProgress.progress}%` }}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -467,7 +518,7 @@ function HomeContent() {
 
       {/* Footer with version */}
       <footer className="mt-12 text-center text-sm text-gray-500">
-        <p>Notorious DAD v2.2.0</p>
+        <p>Notorious DAD v2.3.0</p>
       </footer>
     </main>
   );
