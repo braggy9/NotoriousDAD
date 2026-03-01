@@ -23,6 +23,9 @@ import {
 const OUTPUT_DIR = path.join(process.cwd(), 'output');
 const CLOUD_LIBRARY_FILE = path.join(process.cwd(), 'data', 'audio-library-analysis.json');
 
+// Module-level cache: loaded once per process lifetime (PM2 keeps process alive)
+let _cloudLibraryCache: CloudAudioTrack[] | null = null;
+
 // Mix constraints extracted from prompt
 interface MixConstraints {
   trackCount: number;
@@ -77,20 +80,30 @@ interface CloudAudioTrack {
 }
 
 /**
- * Load cloud audio library (uploaded files)
+ * Load cloud audio library (uploaded files).
+ * Cached in memory after first load — PM2 keeps process alive so subsequent
+ * requests are instant instead of parsing 300MB+ JSON each time.
  */
 function loadCloudLibrary(): CloudAudioTrack[] {
+  if (_cloudLibraryCache !== null) {
+    return _cloudLibraryCache;
+  }
   try {
     if (fs.existsSync(CLOUD_LIBRARY_FILE)) {
+      console.log('  📂 Loading audio library from disk (first request)...');
       const data = JSON.parse(fs.readFileSync(CLOUD_LIBRARY_FILE, 'utf-8'));
-      // Verify files still exist
-      return (data.tracks || []).filter((track: CloudAudioTrack) =>
+      // Verify files still exist (only on initial load)
+      const tracks = (data.tracks || []).filter((track: CloudAudioTrack) =>
         fs.existsSync(track.filePath)
       );
+      _cloudLibraryCache = tracks;
+      console.log(`  ✅ Library loaded: ${tracks.length} tracks cached`);
+      return tracks;
     }
   } catch (err) {
     console.log('  ⚠️ Could not load cloud library:', err);
   }
+  _cloudLibraryCache = [];
   return [];
 }
 
