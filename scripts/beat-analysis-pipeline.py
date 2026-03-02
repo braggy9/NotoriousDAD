@@ -189,15 +189,15 @@ def find_mix_points(segments: list, duration: float) -> dict:
         breakdown_time = breakdowns[0]['startTime']
         mix_out = breakdown_time
 
-    # Intro end → mix-in point
-    intro = next((s for s in segments if s['type'] == 'intro'), None)
-    if intro:
-        mix_in = intro['endTime']
+    # Intro end → find where intro section finishes (last consecutive intro segment)
+    intro_segs = [s for s in segments if s['type'] == 'intro']
+    if intro_segs:
+        mix_in = intro_segs[-1]['endTime']
 
     # Outro start → mix-out (only if no breakdown found)
-    outro = next((s for s in segments if s['type'] == 'outro'), None)
-    if outro and breakdown_time is None:
-        mix_out = outro['startTime']
+    outro_segs = [s for s in segments if s['type'] == 'outro']
+    if outro_segs and breakdown_time is None:
+        mix_out = outro_segs[0]['startTime']
 
     return {
         'mixInPoint': round(mix_in, 2),
