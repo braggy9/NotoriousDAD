@@ -369,7 +369,7 @@ async function processMixJob(jobId: string, prompt: string, trackCount: number):
     });
 
     // Step 4: Optimize track order for harmonic mixing
-    const orderedTracks = optimizeTrackOrderForMix(selectedTracks);
+    const orderedTracks = optimizeTrackOrderForMix(selectedTracks, constraints.energyCurve);
     console.log('  🔀 Optimized track order');
 
     updateJob(jobId, {
@@ -644,6 +644,23 @@ function calculateMixTrackScore(
     score -= 30;
   }
 
+  // 5b. Energy curve bonus — steer selection toward curve-appropriate tracks
+  switch (constraints.energyCurve) {
+    case 'peak':
+      if (energy >= 7) score += 15;      // Strongly favour high-energy tracks
+      else if (energy <= 3) score -= 10; // Penalise low-energy tracks
+      break;
+    case 'chill':
+      if (energy <= 4) score += 15;      // Strongly favour mellow/low-energy tracks
+      else if (energy >= 7) score -= 10; // Penalise high-energy tracks
+      break;
+    case 'build':
+      // Build sets need energy variety — bonus for dynamic extremes (lo AND hi)
+      if (energy <= 4 || energy >= 7) score += 8;
+      break;
+    // 'steady': energyRange constraint is sufficient, no additional bias
+  }
+
   // 6. Artist variety bonus (penalize overused artists)
   const artistCount = artistCounts.get(track.artist) || 0;
   if (artistCount === 0) {
@@ -871,9 +888,19 @@ If no tracks match, return an empty array: []`
 }
 
 /**
- * Optimize track order for harmonic mixing
+ * Optimize track order for harmonic mixing, honouring the requested energy curve.
+ *
+ * The automix-optimizer already has full curve support (build/decline/wave/late-peak/etc).
+ * We map the four MixConstraints curves to the closest optimizer equivalents:
+ *   build  → 'build'     (linear ramp 0.3→0.9)
+ *   peak   → 'late-peak' (exponential climb to climax at 85%)
+ *   chill  → 'decline'   (starts at highest-energy-chill, ends most-relaxed)
+ *   steady → 'steady'    (consistent 0.6 target throughout)
  */
-function optimizeTrackOrderForMix(tracks: IndexedAudioFile[]): IndexedAudioFile[] {
+function optimizeTrackOrderForMix(
+  tracks: IndexedAudioFile[],
+  energyCurve: string = 'steady'
+): IndexedAudioFile[] {
   // Convert to the format expected by automix-optimizer
   const spotifyFormat = tracks.map((track) => ({
     id: track.filePath,
@@ -894,7 +921,21 @@ function optimizeTrackOrderForMix(tracks: IndexedAudioFile[]): IndexedAudioFile[
     camelotKey: track.mikData?.camelotKey,
   }));
 
-  const ordered = optimizeTrackOrder(spotifyFormat as any, { prioritizeHarmonic: true });
+  // Map MixConstraints energy curves to automix-optimizer curves
+  const curveMap: Record<string, string> = {
+    build: 'build',      // Linear energy ramp: 0.3 → 0.9
+    peak: 'late-peak',   // Exponential rise to climax at 85%, slight cool-down after
+    chill: 'decline',    // 0.9 → 0.3: pick warmest chill first, most relaxed last
+    steady: 'steady',    // Flat 0.6 throughout (default DJ background set)
+  };
+  const optimizerCurve = (curveMap[energyCurve] || 'steady') as any;
+
+  console.log(`  🎛️ Energy curve: ${energyCurve} → optimizer: ${optimizerCurve}`);
+
+  const ordered = optimizeTrackOrder(spotifyFormat as any, {
+    prioritizeHarmonic: true,
+    energyCurve: optimizerCurve,
+  });
 
   // Map back to IndexedAudioFile
   return ordered.map((track: any) => {

@@ -39,6 +39,7 @@ function HomeContent() {
   const [prompt, setPrompt] = useState('');
   const [mixPrompt, setMixPrompt] = useState('');
   const [playlistUrl, setPlaylistUrl] = useState(''); // cross-tab: playlist URL for mix generation
+  const [trackCount, setTrackCount] = useState(6);
   const [loading, setLoading] = useState(false);
   const [mixLoading, setMixLoading] = useState(false);
   const [availableMixes, setAvailableMixes] = useState<AvailableMix[]>([]);
@@ -111,7 +112,7 @@ function HomeContent() {
 
     try {
       // Step 1: Submit the job
-      const body: Record<string, unknown> = { prompt: mixPrompt || 'Generate mix from playlist' };
+      const body: Record<string, unknown> = { prompt: mixPrompt || 'Generate mix from playlist', trackCount };
       if (playlistUrl) body.playlistURL = playlistUrl;
 
       const response = await fetch('/api/generate-mix', {
@@ -422,6 +423,27 @@ function HomeContent() {
             )}
 
             <form onSubmit={handleGenerateMix} className="mb-4">
+              {/* Track count selector */}
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-xs text-gray-500 whitespace-nowrap">Tracks:</span>
+                <div className="flex gap-1">
+                  {[4, 6, 8, 10, 12, 15].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setTrackCount(n)}
+                      className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
+                        trackCount === n
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Playlist URL input (optional) */}
               {!playlistUrl && (
                 <div className="mb-3">
