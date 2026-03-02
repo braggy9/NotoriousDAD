@@ -501,8 +501,28 @@ async function parsePrompt(prompt: string, defaultTrackCount: number): Promise<M
   // Check if prompt explicitly mentions track count
   const hasExplicitTrackCount = /\d+\s*tracks?/i.test(prompt);
 
+  // Curve-aware energy range defaults — applied when Claude/basic parser doesn't explicitly set one
+  const curveEnergyRanges: Record<string, { min: number; max: number }> = {
+    build:  { min: 2, max: 9 },  // Wide range: need low AND high energy tracks for arc
+    peak:   { min: 6, max: 10 }, // Peak-time: high energy only
+    chill:  { min: 1, max: 5 },  // Chill: mellow/low energy only
+    steady: { min: 3, max: 8 },  // Standard DJ range
+  };
+
+  const applyCurveDefaults = (result: MixConstraints): MixConstraints => {
+    const defaultRange = defaults.energyRange;
+    const energyWasNotSet =
+      result.energyRange.min === defaultRange.min &&
+      result.energyRange.max === defaultRange.max;
+    if (energyWasNotSet && curveEnergyRanges[result.energyCurve]) {
+      result.energyRange = curveEnergyRanges[result.energyCurve];
+      console.log(`  🎯 Curve-aware energy range applied: ${result.energyCurve} → ${JSON.stringify(result.energyRange)}`);
+    }
+    return result;
+  };
+
   if (!apiKey) {
-    return parsePromptBasic(prompt, defaults, hasExplicitTrackCount);
+    return applyCurveDefaults(parsePromptBasic(prompt, defaults, hasExplicitTrackCount));
   }
 
   try {
@@ -540,14 +560,14 @@ IMPORTANT: Only include trackCount field if the user explicitly specified a numb
           console.log(`  ⚠️ Ignoring Claude's trackCount (${parsed.trackCount}), using app's (${defaultTrackCount})`);
           delete parsed.trackCount;
         }
-        return { ...defaults, ...parsed };
+        return applyCurveDefaults({ ...defaults, ...parsed });
       }
     }
   } catch (err) {
     console.log('  ⚠️ Claude parsing failed, using basic parser');
   }
 
-  return parsePromptBasic(prompt, defaults, hasExplicitTrackCount);
+  return applyCurveDefaults(parsePromptBasic(prompt, defaults, hasExplicitTrackCount));
 }
 
 /**
@@ -688,9 +708,10 @@ async function selectTracks(
   let filtered = pool;
 
   // Filter by BPM range (with tolerance for expansion)
+  // Tracks with no BPM data are included — they miss the +15 score bonus but aren't hard-excluded
   const bpmFiltered = filtered.filter((track) => {
     const bpm = track.mikData?.bpm;
-    if (!bpm) return false;
+    if (!bpm) return true; // No BPM — pass filter, score won't get BPM bonus
     return bpm >= constraints.bpmRange.min - 10 && bpm <= constraints.bpmRange.max + 10;
   });
 
