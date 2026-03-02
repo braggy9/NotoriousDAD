@@ -594,7 +594,8 @@ function findOptimalMixOut(
       console.log(`  ⚡ Found low-energy point at ${lowestEnergy.toFixed(1)}s`);
       return lowestEnergy;
     }
-    return Math.min(duration * 0.97, maxMixOut);
+    // No analysis at all — mix out at ~85% (leaves outro for clean transition)
+    return Math.min(duration * 0.85, maxMixOut);
   }
 
   // Look for outro segment
@@ -650,7 +651,9 @@ function findOptimalMixIn(
       console.log(`  ⚡ Found high-energy point at ${highestEnergy.toFixed(1)}s`);
       return highestEnergy;
     }
-    return 0;
+    // No analysis at all — skip typical DJ track intro (first 16s or 5% of track)
+    const duration = analysis?.duration || 0;
+    return duration > 60 ? Math.min(16, duration * 0.08) : 0;
   }
 
   // Find intro segment

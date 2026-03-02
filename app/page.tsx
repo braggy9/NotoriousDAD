@@ -38,6 +38,7 @@ function HomeContent() {
   const [activeTab, setActiveTab] = useState<TabType>('playlist');
   const [prompt, setPrompt] = useState('');
   const [mixPrompt, setMixPrompt] = useState('');
+  const [playlistUrl, setPlaylistUrl] = useState(''); // cross-tab: playlist URL for mix generation
   const [loading, setLoading] = useState(false);
   const [mixLoading, setMixLoading] = useState(false);
   const [availableMixes, setAvailableMixes] = useState<AvailableMix[]>([]);
@@ -110,10 +111,13 @@ function HomeContent() {
 
     try {
       // Step 1: Submit the job
+      const body: Record<string, unknown> = { prompt: mixPrompt || 'Generate mix from playlist' };
+      if (playlistUrl) body.playlistURL = playlistUrl;
+
       const response = await fetch('/api/generate-mix', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: mixPrompt }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -352,14 +356,26 @@ function HomeContent() {
                     {result.quality && (
                       <p className="text-sm">🎵 {result.quality.harmonicMixPercentage}% harmonic</p>
                     )}
-                    <a
-                      href={result.playlistUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block mt-3 bg-green-600 text-white px-4 py-2 rounded-lg text-sm"
-                    >
-                      🎧 Open in Spotify
-                    </a>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <a
+                        href={result.playlistUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block bg-green-600 text-white px-4 py-2 rounded-lg text-sm"
+                      >
+                        🎧 Open in Spotify
+                      </a>
+                      <button
+                        onClick={() => {
+                          setPlaylistUrl(result.playlistUrl || '');
+                          setMixPrompt('');
+                          setActiveTab('mix');
+                        }}
+                        className="inline-block bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm"
+                      >
+                        🎛️ Generate Audio Mix
+                      </button>
+                    </div>
                     {result.tracks && (
                       <div className="mt-3 pt-3 border-t border-green-300">
                         <p className="text-xs font-semibold mb-2">📥 Export:</p>
@@ -385,48 +401,86 @@ function HomeContent() {
                 Creates a real audio mix file with crossfades and harmonic transitions
               </p>
               <p className="text-xs text-purple-700">
-                Uses your local DJ library with MIK analysis data
+                Uses your 16,000+ track library with MIK analysis and beat detection
               </p>
             </div>
 
-            <form onSubmit={handleGenerateMix} className="mb-4">
-              <textarea
-                value={mixPrompt}
-                onChange={(e) => setMixPrompt(e.target.value)}
-                placeholder="Example: 'Tech house mix, 6 tracks, 125 BPM, building energy'"
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-                rows={3}
-                required
-              />
-              <div className="mt-2 flex flex-wrap gap-2">
+            {/* Playlist mode banner */}
+            {playlistUrl && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-green-800 mb-1">From Spotify playlist</p>
+                  <p className="text-xs text-green-700 truncate">{playlistUrl}</p>
+                </div>
                 <button
-                  type="button"
-                  onClick={() => setMixPrompt('Tech house mix, 6 tracks, 125 BPM, building energy')}
-                  className="text-xs px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-full"
+                  onClick={() => { setPlaylistUrl(''); setMixPrompt(''); }}
+                  className="text-xs text-green-700 hover:text-red-600 whitespace-nowrap"
                 >
-                  🏠 Tech House
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMixPrompt('Deep house sunset, 6 tracks, 120 BPM, chill vibes')}
-                  className="text-xs px-3 py-1.5 bg-pink-100 hover:bg-pink-200 text-pink-900 rounded-full"
-                >
-                  🌅 Sunset Session
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMixPrompt('High energy mix, 8 tracks, 128-135 BPM, peak time')}
-                  className="text-xs px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-900 rounded-full"
-                >
-                  ⚡ Peak Time
+                  ✕ Clear
                 </button>
               </div>
+            )}
+
+            <form onSubmit={handleGenerateMix} className="mb-4">
+              {/* Playlist URL input (optional) */}
+              {!playlistUrl && (
+                <div className="mb-3">
+                  <input
+                    type="text"
+                    value={playlistUrl}
+                    onChange={(e) => setPlaylistUrl(e.target.value)}
+                    placeholder="Spotify playlist URL (optional — or use prompt below)"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+              )}
+
+              {/* Prompt — hidden when in playlist mode */}
+              {!playlistUrl && (
+                <>
+                  <textarea
+                    value={mixPrompt}
+                    onChange={(e) => setMixPrompt(e.target.value)}
+                    placeholder="Example: 'Tech house mix, 6 tracks, 125 BPM, building energy'"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                    rows={3}
+                  />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setMixPrompt('Tech house mix, 6 tracks, 125 BPM, building energy')}
+                      className="text-xs px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-full"
+                    >
+                      🏠 Tech House
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMixPrompt('Deep house sunset, 6 tracks, 120 BPM, chill vibes')}
+                      className="text-xs px-3 py-1.5 bg-pink-100 hover:bg-pink-200 text-pink-900 rounded-full"
+                    >
+                      🌅 Sunset Session
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMixPrompt('High energy mix, 8 tracks, 128-135 BPM, peak time')}
+                      className="text-xs px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-900 rounded-full"
+                    >
+                      ⚡ Peak Time
+                    </button>
+                  </div>
+                </>
+              )}
+
               <button
                 type="submit"
-                disabled={mixLoading || !mixPrompt.trim()}
+                disabled={mixLoading || (!playlistUrl && !mixPrompt.trim())}
                 className="w-full mt-4 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
               >
-                {mixLoading ? 'Generating Mix...' : 'Generate Audio Mix'}
+                {mixLoading
+                  ? 'Generating Mix...'
+                  : playlistUrl
+                    ? 'Generate Mix from Playlist'
+                    : 'Generate Audio Mix'}
               </button>
             </form>
 

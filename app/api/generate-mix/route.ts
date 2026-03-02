@@ -108,6 +108,30 @@ function loadCloudLibrary(): CloudAudioTrack[] {
 }
 
 /**
+ * Decode a Camelot key that may be stored as base64-encoded JSON (MIK export format).
+ * MIK exports keys as base64 JSON like: eyJhbGdvcml0aG0iOjk0LCJrZXkiOiI5QiIsInNvdXJjZSI6Im1peGVkaW5rZXkifQ==
+ * which decodes to: {"algorithm":94,"key":"9B","source":"mixedinkey"}
+ */
+function decodeCamelotKey(rawKey: string): string {
+  if (!rawKey) return '';
+  // Already a valid Camelot key (e.g. "9B", "11A", "1A")
+  if (/^\d{1,2}[AB]$/i.test(rawKey)) return rawKey.toUpperCase();
+  // Try base64-JSON decode (MIK export format)
+  try {
+    const decoded = Buffer.from(rawKey, 'base64').toString('utf-8');
+    if (decoded.startsWith('{')) {
+      const parsed = JSON.parse(decoded);
+      if (parsed.key && /^\d{1,2}[AB]$/i.test(parsed.key)) {
+        return parsed.key.toUpperCase();
+      }
+    }
+  } catch {
+    // Not base64 JSON — use as-is
+  }
+  return rawKey;
+}
+
+/**
  * Convert cloud track to IndexedAudioFile format (v4 with genre)
  */
 function cloudTrackToIndexed(track: CloudAudioTrack): IndexedAudioFile {
@@ -123,8 +147,8 @@ function cloudTrackToIndexed(track: CloudAudioTrack): IndexedAudioFile {
     isAnalyzed: true,
     mikData: {
       bpm: track.bpm,
-      key: track.camelotKey,
-      camelotKey: track.camelotKey,
+      key: decodeCamelotKey(track.camelotKey),
+      camelotKey: decodeCamelotKey(track.camelotKey),
       energy: track.energy,
     },
   };
@@ -228,7 +252,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { prompt, trackCount = 6, playlistURL } = body;
 
-    if (!prompt || typeof prompt !== 'string') {
+    const hasPlaylistUrl = playlistURL && typeof playlistURL === 'string' && playlistURL.trim().length > 0;
+
+    if (!hasPlaylistUrl && (!prompt || typeof prompt !== 'string')) {
       return NextResponse.json(
         { error: 'Missing or invalid prompt' },
         { status: 400 }
@@ -236,7 +262,7 @@ export async function POST(request: NextRequest) {
     }
 
     // If playlistURL provided, route to playlist-to-mix logic
-    if (playlistURL && typeof playlistURL === 'string' && playlistURL.trim().length > 0) {
+    if (hasPlaylistUrl) {
       console.log(`🎧 Generate Mix API (Playlist Mode) - URL: "${playlistURL}", trackCount: ${trackCount}`);
 
       // Import playlist-to-mix logic
@@ -716,6 +742,23 @@ async function selectTracks(
     selected.push(track);
     selectedIds.add(trackId);
     selectedArtists.set(track.artist, artistCount + 1);
+  }
+
+  // If we fell short, retry with relaxed score threshold (remove hard constraint penalty)
+  if (selected.length < constraints.trackCount) {
+    console.log(`  ⚠️ Only ${selected.length}/${constraints.trackCount} tracks selected, retrying with relaxed score threshold`);
+    for (const { track, score } of scoredTracks) {
+      if (selected.length >= constraints.trackCount) break;
+      if (score < -30) continue; // Still reject truly bad fits
+      const trackId = track.filePath;
+      if (selectedIds.has(trackId)) continue;
+      const artistCount = selectedArtists.get(track.artist) || 0;
+      if (artistCount >= maxPerArtist) continue;
+      selected.push(track);
+      selectedIds.add(trackId);
+      selectedArtists.set(track.artist, artistCount + 1);
+    }
+    console.log(`  📊 After relaxed selection: ${selected.length} tracks`);
   }
 
   console.log(`  ✅ Selected ${selected.length} tracks from ${selectedArtists.size} different artists`);
