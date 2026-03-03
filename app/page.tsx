@@ -424,10 +424,10 @@ function HomeContent() {
 
             <form onSubmit={handleGenerateMix} className="mb-4">
               {/* Track count selector */}
-              <div className="mb-3 flex items-center gap-2">
+              <div className="mb-3 flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-gray-500 whitespace-nowrap">Tracks:</span>
-                <div className="flex gap-1">
-                  {[4, 6, 8, 10, 12, 15].map((n) => (
+                <div className="flex gap-1 flex-wrap">
+                  {[6, 10, 15, 20, 30, 40].map((n) => (
                     <button
                       key={n}
                       type="button"
@@ -441,7 +441,23 @@ function HomeContent() {
                       {n}
                     </button>
                   ))}
+                  <input
+                    type="number"
+                    min={2}
+                    max={60}
+                    value={![6, 10, 15, 20, 30, 40].includes(trackCount) ? trackCount : ''}
+                    onChange={(e) => setTrackCount(Math.max(2, Math.min(60, parseInt(e.target.value) || 6)))}
+                    placeholder="#"
+                    className={`w-12 text-xs text-center py-1 rounded-full font-medium border transition-colors ${
+                      ![6, 10, 15, 20, 30, 40].includes(trackCount)
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : 'bg-gray-100 text-gray-700 border-gray-200'
+                    }`}
+                  />
                 </div>
+                <span className="text-xs text-gray-400">
+                  ~{Math.round(trackCount * 3.5)} min
+                </span>
               </div>
 
               {/* Playlist URL input (optional) */}
