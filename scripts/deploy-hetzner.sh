@@ -49,11 +49,8 @@ rsync -avz --progress \
   --exclude 'tsconfig.tsbuildinfo' \
   $LOCAL_DIR/ $SERVER:$SERVER_DIR/
 
-# Sync .env.local separately (if exists)
-if [ -f "$LOCAL_DIR/.env.local" ]; then
-  echo "📝 Syncing .env.local..."
-  rsync -avz $LOCAL_DIR/.env.local $SERVER:$SERVER_DIR/
-fi
+# NOTE: .env.local is NOT synced — Hetzner has its own config
+# (different SPOTIFY_REDIRECT_URI, etc). Edit directly via SSH if needed.
 
 # Build and restart on server
 echo "⚙️  Building and restarting..."
@@ -64,10 +61,14 @@ cd /var/www/notorious-dad
 echo "📦 Installing npm dependencies..."
 npm install --production=false
 
-# Temporarily move audio-library symlink (Turbopack can't handle symlinks)
-echo "📦 Moving audio-library symlink temporarily..."
+# Hide audio-library symlink from Turbopack (can't handle symlinks in project root)
+# IMPORTANT: Don't mv — a running mix would lose access to audio files mid-build.
+# Instead, temporarily rename so Turbopack ignores it, keeping the original target accessible.
+echo "📦 Hiding audio-library symlink from Turbopack..."
+AUDIO_LINK_TARGET=""
 if [ -L audio-library ]; then
-  mv audio-library audio-library-temp
+  AUDIO_LINK_TARGET=$(readlink audio-library)
+  rm audio-library
 fi
 
 # Build the Next.js app
@@ -76,8 +77,8 @@ npm run build
 
 # Restore audio-library symlink
 echo "📦 Restoring audio-library symlink..."
-if [ -L audio-library-temp ]; then
-  mv audio-library-temp audio-library
+if [ -n "$AUDIO_LINK_TARGET" ]; then
+  ln -sf "$AUDIO_LINK_TARGET" audio-library
 fi
 
 # Start or restart PM2
