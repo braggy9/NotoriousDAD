@@ -158,9 +158,17 @@ function cloudTrackToIndexed(track: CloudAudioTrack): IndexedAudioFile {
     indexed.genre = track.genre;
   }
 
-  // Pass through v3 enhanced data if available
+  // Pass through v3 enhanced data if available — with sanity check
+  // The beat analysis pipeline sometimes picks the FIRST breakdown as mixOut,
+  // giving a 48s usable section on a 5-minute track. Discard bad mix points
+  // so the mix engine falls back to its defaults (in=16s, out=85%).
   if (track.mixPoints) {
-    indexed.mixPoints = track.mixPoints;
+    const usable = (track.mixPoints.mixOutPoint || 0) - (track.mixPoints.mixInPoint || 0);
+    const minUsable = Math.max(60, (track.duration || 0) * 0.25);
+    if (usable >= minUsable) {
+      indexed.mixPoints = track.mixPoints;
+    }
+    // else: silently discard — mix engine will use smart fallbacks
   }
   if (track.segments) {
     indexed.segments = track.segments;

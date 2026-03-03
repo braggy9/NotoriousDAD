@@ -183,11 +183,18 @@ def find_mix_points(segments: list, duration: float) -> dict:
     if drops:
         drop_time = drops[0]['startTime']
 
-    # First breakdown = good mix-out candidate
+    # Last breakdown in the second half = best mix-out candidate
+    # (First breakdown is often a brief energy dip after the intro — too early)
     breakdowns = [s for s in middle if s['type'] == 'breakdown']
-    if breakdowns:
-        breakdown_time = breakdowns[0]['startTime']
+    late_breakdowns = [b for b in breakdowns if b['startTime'] > duration * 0.5]
+    if late_breakdowns:
+        breakdown_time = late_breakdowns[-1]['startTime']
         mix_out = breakdown_time
+    elif breakdowns:
+        # No breakdown past 50% — use the last available one if past 30%
+        breakdown_time = breakdowns[-1]['startTime']
+        if breakdown_time > duration * 0.3:
+            mix_out = breakdown_time
 
     # Intro end → find where intro section finishes (last consecutive intro segment)
     intro_segs = [s for s in segments if s['type'] == 'intro']
