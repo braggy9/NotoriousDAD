@@ -310,7 +310,7 @@ function HomeContent() {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Example: 'Chilled sunset drinks vibe, similar to Bonobo and Tycho, 90-110 BPM'"
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
                 rows={3}
                 required
               />
@@ -452,7 +452,7 @@ function HomeContent() {
                     value={playlistUrl}
                     onChange={(e) => setPlaylistUrl(e.target.value)}
                     placeholder="Spotify playlist URL (optional — or use prompt below)"
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                 </div>
               )}
@@ -464,7 +464,7 @@ function HomeContent() {
                     value={mixPrompt}
                     onChange={(e) => setMixPrompt(e.target.value)}
                     placeholder="Example: 'Tech house mix, 6 tracks, 125 BPM, building energy'"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
                     rows={3}
                   />
                   <div className="mt-2 flex flex-wrap gap-2">
