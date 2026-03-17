@@ -33,7 +33,7 @@ interface MixConstraints {
   energyRange: { min: number; max: number };
   genres: string[];
   moods: string[];
-  energyCurve: 'build' | 'peak' | 'chill' | 'steady';
+  energyCurve: 'build' | 'peak' | 'chill' | 'steady' | 'wave' | 'double-peak' | 'rollercoaster' | 'plateau';
 }
 
 // Cloud audio track type (v3 enhanced with mix points)
@@ -409,6 +409,7 @@ async function processMixJob(jobId: string, prompt: string, trackCount: number):
           bpm: file.mikData?.bpm || 120,
           camelotKey: file.mikData?.camelotKey || '8A',
           energy: file.mikData?.energy || 5,
+          genre: file.genre, // Propagate genre for genre-aware crossfade decisions
           analysis: {
             duration: file.durationSeconds || 0,
           },
@@ -431,6 +432,12 @@ async function processMixJob(jobId: string, prompt: string, trackCount: number):
           track.mixInPoint = file.mixPoints.mixInPoint;
           track.mixOutPoint = file.mixPoints.mixOutPoint;
           console.log(`    ✓ v3 mix points for ${file.title}: in=${file.mixPoints.mixInPoint.toFixed(1)}s, out=${file.mixPoints.mixOutPoint.toFixed(1)}s`);
+        }
+
+        // Pass through beat analysis segments for segment-aware transitions
+        if (file.segments && file.segments.length > 0) {
+          track.analysis.segments = file.segments;
+          console.log(`    ✓ ${file.segments.length} segments for ${file.title}`);
         }
 
         // Pass through transition hints for intelligent crossfade
@@ -511,10 +518,14 @@ async function parsePrompt(prompt: string, defaultTrackCount: number): Promise<M
 
   // Curve-aware energy range defaults — applied when Claude/basic parser doesn't explicitly set one
   const curveEnergyRanges: Record<string, { min: number; max: number }> = {
-    build:  { min: 2, max: 9 },  // Wide range: need low AND high energy tracks for arc
-    peak:   { min: 6, max: 10 }, // Peak-time: high energy only
-    chill:  { min: 1, max: 5 },  // Chill: mellow/low energy only
-    steady: { min: 3, max: 8 },  // Standard DJ range
+    build:          { min: 2, max: 9 },  // Wide range: need low AND high energy tracks
+    peak:           { min: 6, max: 10 }, // Peak-time: high energy only
+    chill:          { min: 1, max: 5 },  // Chill: mellow/low energy only
+    steady:         { min: 3, max: 8 },  // Standard DJ range
+    wave:           { min: 2, max: 9 },  // Full range for arc shape
+    'double-peak':  { min: 3, max: 10 }, // Need highs for two peaks + valley lows
+    rollercoaster:  { min: 2, max: 10 }, // Widest range for dramatic swings
+    plateau:        { min: 4, max: 9 },  // Moderate-to-high for sustained peak
   };
 
   const applyCurveDefaults = (result: MixConstraints): MixConstraints => {
@@ -551,7 +562,15 @@ Return ONLY valid JSON with these fields:
 - energyRange: { min, max } (1-10 scale)
 - genres: string[] (detected genres)
 - moods: string[] (mood descriptors)
-- energyCurve: "build" | "peak" | "chill" | "steady"
+- energyCurve: "build" | "peak" | "chill" | "steady" | "wave" | "double-peak" | "rollercoaster" | "plateau"
+  - build = warm up set (low→high)
+  - peak = festival closing set (build to climax at 85%)
+  - wave = classic arc (build→peak→cooldown)
+  - double-peak = two peaks with valley (dramatic set)
+  - rollercoaster = multiple ups and downs
+  - plateau = flat warm-up then sustained peak
+  - chill = cool-down set (high→low)
+  - steady = consistent energy throughout
 
 IMPORTANT: Only include trackCount field if the user explicitly specified a number of tracks. If not mentioned, omit this field entirely.`,
         },
@@ -605,8 +624,16 @@ function parsePromptBasic(prompt: string, defaults: MixConstraints, hasExplicitT
   // Detect energy curve
   if (lower.includes('build') || lower.includes('warm up') || lower.includes('warmup')) {
     defaults.energyCurve = 'build';
-  } else if (lower.includes('peak') || lower.includes('high energy')) {
+  } else if (lower.includes('peak') || lower.includes('high energy') || lower.includes('festival')) {
     defaults.energyCurve = 'peak';
+  } else if (lower.includes('wave') || lower.includes('arc') || lower.includes('journey')) {
+    defaults.energyCurve = 'wave';
+  } else if (lower.includes('double') || lower.includes('two peak') || lower.includes('dramatic')) {
+    defaults.energyCurve = 'double-peak';
+  } else if (lower.includes('rollercoaster') || lower.includes('roller coaster') || lower.includes('ups and downs')) {
+    defaults.energyCurve = 'rollercoaster';
+  } else if (lower.includes('plateau') || lower.includes('sustain')) {
+    defaults.energyCurve = 'plateau';
   } else if (lower.includes('chill') || lower.includes('downtempo') || lower.includes('ambient')) {
     defaults.energyCurve = 'chill';
   }
@@ -952,10 +979,14 @@ function optimizeTrackOrderForMix(
 
   // Map MixConstraints energy curves to automix-optimizer curves
   const curveMap: Record<string, string> = {
-    build: 'build',      // Linear energy ramp: 0.3 → 0.9
-    peak: 'late-peak',   // Exponential rise to climax at 85%, slight cool-down after
-    chill: 'decline',    // 0.9 → 0.3: pick warmest chill first, most relaxed last
-    steady: 'steady',    // Flat 0.6 throughout (default DJ background set)
+    build: 'build',              // Linear energy ramp: 0.3 → 0.9
+    peak: 'late-peak',           // Exponential rise to climax at 85%
+    chill: 'decline',            // 0.9 → 0.3
+    steady: 'steady',            // Flat 0.6 throughout
+    wave: 'wave',                // Single peak in middle (arc)
+    'double-peak': 'double-peak', // Two peaks with valley
+    rollercoaster: 'rollercoaster', // Multiple ups/downs
+    plateau: 'plateau-peak',     // Flat warm-up then sustained peak
   };
   const optimizerCurve = (curveMap[energyCurve] || 'steady') as any;
 

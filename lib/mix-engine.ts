@@ -49,6 +49,7 @@ import * as path from 'path';
 import { TrackAnalysis, analyzeTrack } from './beat-analyzer';
 import { TransitionMetadata, TransitionType, TransitionEffect } from './transition-analyzer';
 import { IndexedAudioFile } from './audio-library-indexer';
+import { areKeysCompatible, HarmonicCompatibility } from './camelot-wheel';
 import {
   SpotifyAudioAnalysis,
   findOptimalMixOutPoint as spotifyFindMixOut,
@@ -78,6 +79,7 @@ export interface MixTrack {
   bpm: number;
   camelotKey: string;
   energy: number;
+  genre?: string; // Genre tag from audio file metadata
 
   // Optional: pre-analyzed data
   analysis?: TrackAnalysis;
@@ -99,6 +101,9 @@ export interface MixTrack {
     hasCleanOutro: boolean;
     idealCrossfadeBars: number;
   };
+
+  // Internal: marks pre-normalized intermediate mix files
+  _isIntermediate?: boolean;
 }
 
 // Progress callback
@@ -200,40 +205,138 @@ function buildEQSwapFilter(crossfadeDuration: number): string {
 }
 
 /**
+ * Build animated low-pass filter sweep ("closing down" effect)
+ *
+ * Simulates a DJ turning the low-pass filter knob down — the "muffled"
+ * effect that builds tension before a drop. Common in house/techno sets.
+ * Progressively removes high frequencies from the outgoing track.
+ */
+function buildLowPassSweepFilter(crossfadeDuration: number, track1TrimmedDuration?: number): string {
+  if (track1TrimmedDuration && track1TrimmedDuration > crossfadeDuration) {
+    const sweepStart = (track1TrimmedDuration - crossfadeDuration).toFixed(3);
+    const cd = crossfadeDuration.toFixed(3);
+
+    // Ramp: 1→0 (full spectrum → muffled) during crossfade zone
+    const rampDown = `1-clip((t-${sweepStart})/${cd},0,1)`;
+    const rampUp = `clip((t-${sweepStart})/${cd},0,1)`;
+
+    return [
+      // Split outgoing into clean and filtered paths
+      `[a1]asplit=2[a1_dry][a1_wet]`,
+      // Aggressive low-pass at 500Hz (two cascaded for -24dB/oct rolloff)
+      `[a1_wet]lowpass=f=500:p=2,lowpass=f=500:p=2[a1_lpf]`,
+      // Clean signal: full volume before sweep, fades to 0 during crossfade
+      `[a1_dry]volume='${rampDown}':eval=frame[a1_d]`,
+      // Filtered signal: silent before sweep, fades to 1 during crossfade
+      `[a1_lpf]volume='${rampUp}':eval=frame[a1_w]`,
+      // Combine
+      `[a1_d][a1_w]amix=inputs=2:normalize=0:duration=shortest[a1_final]`,
+      // Fade in incoming track
+      `[a2]afade=t=in:st=0:d=${crossfadeDuration}[a2_final]`,
+      // Crossfade the swept outgoing with incoming
+      `[a1_final][a2_final]acrossfade=d=${crossfadeDuration}:c1=tri:c2=tri`,
+    ].join(';');
+  }
+
+  // Fallback: simple crossfade with low-pass on outgoing
+  return [
+    `[a1]lowpass=f=800:p=1[a1_final]`,
+    `[a2]afade=t=in:st=0:d=${crossfadeDuration}[a2_final]`,
+    `[a1_final][a2_final]acrossfade=d=${crossfadeDuration}:c1=exp:c2=log`,
+  ].join(';');
+}
+
+/**
+ * Build echo/delay fadeout transition
+ *
+ * Adds echo/delay to the outgoing track as it fades out, creating
+ * a spacious, professional transition. Classic DJ technique for
+ * energy decreases and genre changes.
+ */
+function buildEchoOutFilter(crossfadeDuration: number): string {
+  // aecho params: in_gain|out_gain|delays_ms|decays
+  // Multiple taps for rhythmic echo (150ms + 300ms = dotted eighth + quarter at ~100BPM)
+  return [
+    `[a1]aecho=0.6:0.4:150|300:0.4|0.2[a1_final]`,
+    `[a2]afade=t=in:st=0:d=${crossfadeDuration}[a2_final]`,
+    `[a1_final][a2_final]acrossfade=d=${crossfadeDuration}:c1=exp:c2=log`,
+  ].join(';');
+}
+
+/**
  * FFmpeg filter for crossfade transition with advanced effects
+ *
+ * Enhanced with: low-pass sweep, echo-out, energy-aware decisions,
+ * and detailed harmonic compatibility types.
  */
 function buildCrossfadeFilter(
   outSegment: string,
   inSegment: string,
   crossfadeDuration: number,
   harmonicMatch: boolean,
-  track1TrimmedDuration?: number
+  track1TrimmedDuration?: number,
+  harmonicType?: string, // 'same' | 'relative' | 'adjacent' | 'energy_boost' | 'modal' | 'clash'
+  energyDiff?: number,   // energy2 - energy1 (positive = energy increase)
 ): string {
-  // ENHANCEMENT: Use advanced filters for specific segment combinations
-
-  // Breakdown → Buildup: Filter sweep (professional DJ transition)
+  // 1. Breakdown → Buildup: High-pass filter sweep (DJ classic)
   if (outSegment === 'breakdown' && inSegment === 'buildup') {
-    console.log(`    🎛️ Using filter sweep transition`);
+    console.log(`    🎛️ Using HP filter sweep (breakdown→buildup)`);
     return buildFilterSweepFilter(crossfadeDuration, track1TrimmedDuration);
   }
 
-  // Outro → Intro: EQ swap for smooth bass transition
+  // 2. Buildup/Verse → Drop: Low-pass sweep ("closing down" before the drop)
+  if (inSegment === 'drop' && (outSegment === 'buildup' || outSegment === 'verse')) {
+    console.log(`    🎛️ Using LP filter sweep (→drop)`);
+    return buildLowPassSweepFilter(crossfadeDuration, track1TrimmedDuration);
+  }
+
+  // 3. Energy decrease (>0.15 drop): Echo-out for spacious transition
+  if (energyDiff !== undefined && energyDiff < -0.15) {
+    console.log(`    🎛️ Using echo-out (energy decrease: ${energyDiff.toFixed(2)})`);
+    return buildEchoOutFilter(crossfadeDuration);
+  }
+
+  // 3b. Large energy increase (>0.25 jump): HP sweep to build tension before the lift
+  if (energyDiff !== undefined && energyDiff > 0.25) {
+    console.log(`    🎛️ Using HP sweep (energy lift: +${energyDiff.toFixed(2)})`);
+    return buildFilterSweepFilter(crossfadeDuration, track1TrimmedDuration);
+  }
+
+  // 4. Outro → Intro: EQ swap for smooth bass transition
   if (outSegment === 'outro' || inSegment === 'intro') {
-    console.log(`    🎛️ Using EQ swap transition`);
+    console.log(`    🎛️ Using EQ swap (outro/intro)`);
     return buildEQSwapFilter(crossfadeDuration);
   }
 
-  // Drop → Drop: Quick cut with minimal bleed
+  // 5. Drop → Drop: Quick cut with minimal bleed
   if (outSegment === 'drop' && inSegment === 'drop') {
+    console.log(`    🎛️ Using quick cut (drop→drop)`);
     return `acrossfade=d=${Math.min(crossfadeDuration, 2)}:c1=tri:c2=tri`;
   }
 
-  // Harmonic matches: Smooth exponential blend
-  if (harmonicMatch) {
+  // 6. Key clash: Short transition with LP sweep to mask dissonance
+  if (harmonicType === 'clash') {
+    console.log(`    🎛️ Using LP sweep (key clash mask)`);
+    return buildLowPassSweepFilter(Math.min(crossfadeDuration, 8), track1TrimmedDuration);
+  }
+
+  // 7. Energy boost (+7 Camelot): Dramatic exponential blend
+  if (harmonicType === 'energy_boost') {
+    console.log(`    🎛️ Using dramatic blend (energy boost +7)`);
+    return `acrossfade=d=${crossfadeDuration}:c1=exp:c2=exp`;
+  }
+
+  // 8. Same key or relative: Long smooth exponential blend
+  if (harmonicType === 'same' || harmonicType === 'relative' || harmonicMatch) {
     return `acrossfade=d=${crossfadeDuration}:c1=exp:c2=log`;
   }
 
-  // Non-harmonic: Quick linear blend to minimize clash
+  // 9. Adjacent/modal: Medium crossfade
+  if (harmonicType === 'adjacent' || harmonicType === 'modal') {
+    return `acrossfade=d=${crossfadeDuration}:c1=tri:c2=tri`;
+  }
+
+  // 10. Default: Quick linear blend
   return `acrossfade=d=${crossfadeDuration}:c1=tri:c2=tri`;
 }
 
@@ -345,7 +448,10 @@ function generateMixCommand(
   outSegment: string, // Outgoing segment type
   inSegment: string, // Incoming segment type
   harmonicMatch: boolean, // Key compatibility
-  bpmAdjust?: number // Pitch/tempo adjustment for track 2
+  bpmAdjust?: number, // Pitch/tempo adjustment for track 2
+  skipLoudnormTrack1?: boolean, // Skip loudnorm on pre-normalized intermediates
+  harmonicType?: string, // Detailed harmonic compatibility type
+  energyDiff?: number, // Energy difference for transition decisions
 ): string {
   const parts: string[] = ['ffmpeg', '-y'];
 
@@ -362,15 +468,19 @@ function generateMixCommand(
   // LRA=11 = loudness range target (preserves dynamics)
   const loudnorm = 'loudnorm=I=-14:TP=-1:LRA=11';
 
-  // Trim track 1 to end at mix out point + crossfade, then normalize
-  filters.push(`[0:a]atrim=0:${track1MixOut + crossfadeSeconds},asetpts=PTS-STARTPTS,${loudnorm}[a1]`);
+  // Trim track 1 to end at mix out point + crossfade
+  // Skip loudnorm on intermediate mix files to prevent cumulative compression
+  if (skipLoudnormTrack1) {
+    filters.push(`[0:a]atrim=0:${track1MixOut + crossfadeSeconds},asetpts=PTS-STARTPTS[a1]`);
+  } else {
+    filters.push(`[0:a]atrim=0:${track1MixOut + crossfadeSeconds},asetpts=PTS-STARTPTS,${loudnorm}[a1]`);
+  }
 
   // Track 1 trimmed duration (needed for animated filter sweep timing)
   const track1TrimmedDuration = track1MixOut + crossfadeSeconds;
 
-  // Trim, optionally tempo-adjust, and normalize track 2
+  // Trim, optionally tempo-adjust, and normalize track 2 (always normalize — it's a fresh source track)
   if (bpmAdjust && Math.abs(bpmAdjust) > 0.5) {
-    // Adjust tempo using atempo
     const tempoFactor = 1 + bpmAdjust / 100;
     filters.push(
       `[1:a]atrim=${track2MixIn}:,asetpts=PTS-STARTPTS,atempo=${tempoFactor},${loudnorm}[a2]`
@@ -379,8 +489,11 @@ function generateMixCommand(
     filters.push(`[1:a]atrim=${track2MixIn}:,asetpts=PTS-STARTPTS,${loudnorm}[a2]`);
   }
 
-  // ENHANCEMENT: Advanced crossfade with filter effects
-  const crossfadeFilter = buildCrossfadeFilter(outSegment, inSegment, crossfadeSeconds, harmonicMatch, track1TrimmedDuration);
+  // Advanced crossfade with filter effects (now with harmonic type and energy context)
+  const crossfadeFilter = buildCrossfadeFilter(
+    outSegment, inSegment, crossfadeSeconds, harmonicMatch,
+    track1TrimmedDuration, harmonicType, energyDiff
+  );
   filters.push(`[a1][a2]${crossfadeFilter}[out]`);
 
   parts.push(`-filter_complex "${filters.join(';')}"`);
@@ -435,8 +548,8 @@ export async function mixTwoTracks(
     }
 
     // Calculate crossfade duration (genre-aware)
-    const genre1 = (track1 as any).genre;
-    const genre2 = (track2 as any).genre;
+    const genre1 = track1.genre;
+    const genre2 = track2.genre;
     const genreCrossfade = calculateGenreAwareCrossfade(
       genre1,
       genre2,
@@ -514,12 +627,19 @@ export async function mixTwoTracks(
       );
     }
 
-    // Calculate BPM adjustment if needed
+    // Calculate BPM adjustment if needed (allow up to 20 BPM difference)
     const bpmDiff = Math.abs(track1.bpm - track2.bpm);
     let bpmAdjust: number | undefined;
-    if (bpmDiff > 1 && bpmDiff < 10) {
+    if (bpmDiff > 1 && bpmDiff < 20) {
       bpmAdjust = ((track1.bpm - track2.bpm) / track2.bpm) * 100;
     }
+
+    // Enhanced harmonic analysis: get detailed compatibility type
+    const harmonicInfo = areKeysCompatible(track1.camelotKey, track2.camelotKey);
+    const harmonicTypeStr = harmonicInfo.type; // 'same' | 'relative' | 'adjacent' | 'energy_boost' | 'modal' | 'clash'
+
+    // Calculate energy difference for transition decisions
+    const energyDiff = (track2.energy || 0.5) - (track1.energy || 0.5);
 
     // Generate and execute FFmpeg command
     const command = generateMixCommand(
@@ -532,7 +652,10 @@ export async function mixTwoTracks(
       outSegment,
       inSegment,
       harmonicMatch,
-      bpmAdjust
+      bpmAdjust,
+      track1._isIntermediate, // Skip loudnorm on pre-normalized intermediates
+      harmonicTypeStr,        // Detailed harmonic compatibility
+      energyDiff,             // Energy diff for transition decisions
     );
 
     console.log(`  Mixing: ${track1.title} → ${track2.title}`);
@@ -856,26 +979,23 @@ function calculateTransitionScore(
 ): number {
   let score = 0;
 
-  // 1. Key compatibility (up to 30 points)
-  const keyCompat = checkKeyCompatibility(track1.camelotKey, track2.camelotKey);
-  if (track1.camelotKey === track2.camelotKey) {
-    score += 30; // Perfect match
-  } else if (keyCompat) {
-    score += 20; // Compatible
-  } else {
-    score += 5; // Not compatible but not terrible
-  }
+  // 1. Key compatibility (up to 30 points) — uses enhanced Camelot scoring
+  const harmonicInfo = areKeysCompatible(track1.camelotKey, track2.camelotKey);
+  // Map Camelot score (0-100) to 0-30 point range
+  score += Math.round(harmonicInfo.score * 0.3);
 
   // 2. BPM compatibility (up to 25 points)
   const bpmDiff = Math.abs(track1.bpm - track2.bpm);
   if (bpmDiff < 2) {
     score += 25; // Very close
   } else if (bpmDiff < 5) {
-    score += 15; // Close enough
+    score += 18; // Close enough
   } else if (bpmDiff < 10) {
-    score += 8; // Noticeable but acceptable
+    score += 10; // Noticeable but acceptable
+  } else if (bpmDiff < 15) {
+    score += 5;  // Stretch but atempo can handle it
   } else {
-    score += 0; // Jarring
+    score += 0;  // Jarring
   }
 
   // 3. Energy match at mix points (up to 25 points)
@@ -886,9 +1006,7 @@ function calculateTransitionScore(
   score += energyScore;
 
   // 4. Beat alignment (up to 20 points)
-  // If downbeats available, check if mix points are aligned
   const downbeats1 = track1.analysis?.downbeats || [];
-  const downbeats2 = track2.analysis?.downbeats || [];
 
   let alignmentScore = 10; // Default partial score
   if (downbeats1.length > 0) {
@@ -985,35 +1103,64 @@ export async function mixPlaylist(
         `Mixing track ${i + 1} of ${job.tracks.length - 1}`
       );
 
-      const track1 = { ...job.tracks[i], filePath: currentMixPath };
+      // For i > 0, track1 is an intermediate mix file — DON'T inherit original track's
+      // analysis/segments/mixPoints (they're for a single track, not the growing mix)
+      let track1: MixTrack;
+      if (i === 0) {
+        track1 = { ...job.tracks[i], filePath: currentMixPath };
+      } else {
+        // Intermediate: only preserve identity + BPM/key/energy from original track for
+        // transition decisions, but clear analysis/mixPoints (they belong to the original track)
+        const originalTrack = job.tracks[i];
+        track1 = {
+          filePath: currentMixPath,
+          artist: originalTrack.artist,
+          title: `Mix (tracks 1-${i + 1})`,
+          bpm: originalTrack.bpm,
+          camelotKey: originalTrack.camelotKey,
+          energy: originalTrack.energy,
+          genre: originalTrack.genre,
+          _isIntermediate: true,
+          // Deliberately omit: analysis, spotifyAnalysis, mixInPoint, mixOutPoint, transitionHints
+        };
+      }
       const track2 = job.tracks[i + 1];
 
-      // Determine transition length based on v3 hints, segment analysis, or key compatibility
+      // Enhanced harmonic analysis: use detailed compatibility scoring
       const key1 = track1.camelotKey;
       const key2 = track2.camelotKey;
-      const isHarmonic = checkKeyCompatibility(key1, key2);
+      const harmonicInfo = areKeysCompatible(key1, key2);
+      const isHarmonic = harmonicInfo.compatible;
 
       if (isHarmonic) {
         harmonicTransitions++;
       }
 
-      // CRITICAL FIX: For intermediate mix files (i > 0), get actual duration from file
-      // This prevents progressive shortening in multi-track mixes
-      let actualDuration = track1.analysis?.duration;
-      if (i > 0 && !actualDuration) {
+      // For intermediate mix files, ALWAYS get actual duration from file via ffprobe
+      // (original track analysis duration is wrong — it's a single track, not the growing mix)
+      let actualDuration: number;
+      if (i > 0) {
         try {
           const durationCmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${currentMixPath}"`;
           const durationStr = execSync(durationCmd, { encoding: 'utf-8' }).trim();
           actualDuration = parseFloat(durationStr);
           console.log(`    📏 Intermediate mix duration: ${actualDuration.toFixed(1)}s (from ffprobe)`);
         } catch (error) {
-          console.error(`    ⚠️ Failed to get duration for intermediate mix, using default`);
-          actualDuration = 180;
+          console.error(`    ⚠️ Failed to get duration for intermediate mix, using 300s default`);
+          actualDuration = 300;
         }
+      } else {
+        actualDuration = track1.analysis?.duration || 180;
+      }
+
+      // For intermediates, set mixOutPoint near end of the growing mix
+      // (mix out at 85% of total, not 97% — leave room for the crossfade)
+      if (i > 0) {
+        track1.mixOutPoint = actualDuration * 0.85;
       }
 
       // Get segment types at mix points for intelligent transitions
-      const mixOut = track1.mixOutPoint || (actualDuration || 180) * 0.97;
+      const mixOut = track1.mixOutPoint || actualDuration * 0.85;
       const mixIn = track2.mixInPoint || 0;
       const outSegment = getSegmentAtTime(track1.analysis, mixOut);
       const inSegment = getSegmentAtTime(track2.analysis, mixIn);
@@ -1038,12 +1185,12 @@ export async function mixPlaylist(
           track1.spotifyAnalysis,
           track2.spotifyAnalysis
         );
-        console.log(`    🎛️ Dynamic: ${transitionBars} bars (${outSegment}→${inSegment}, ${isHarmonic ? 'harmonic' : 'clash'})`);
+        console.log(`    🎛️ Dynamic: ${transitionBars} bars (${outSegment}→${inSegment}, ${harmonicInfo.type})`);
       }
 
       // Log v3 mix points being used
       if (track1.mixOutPoint || track2.mixInPoint) {
-        console.log(`    ✓ v3 mix points: out=${track1.mixOutPoint?.toFixed(1) || 'auto'}s, in=${track2.mixInPoint?.toFixed(1) || '0'}s`);
+        console.log(`    ✓ Mix points: out=${track1.mixOutPoint?.toFixed(1) || 'auto'}s, in=${track2.mixInPoint?.toFixed(1) || '0'}s`);
       }
 
       // Generate intermediate file path — use WAV (lossless) to prevent
@@ -1070,12 +1217,12 @@ export async function mixPlaylist(
         transitionCount++;
 
         // Calculate actual transition score
-        const actualMixOut = track1.mixOutPoint || (track1.analysis?.duration || 180) * 0.97;
+        const actualMixOut = track1.mixOutPoint || actualDuration * 0.85;
         const actualMixIn = track2.mixInPoint || 0;
         const transitionScore = calculateTransitionScore(track1, track2, actualMixOut, actualMixIn);
         totalTransitionScore += transitionScore;
 
-        console.log(`    ✅ Transition score: ${transitionScore}/100`);
+        console.log(`    ✅ Transition ${i + 1}/${job.tracks.length - 1}: score=${transitionScore}/100, type=${harmonicInfo.type}`);
       }
     }
 
@@ -1086,15 +1233,25 @@ export async function mixPlaylist(
     const outputExt = path.extname(job.outputPath).toLowerCase();
     const currentExt = path.extname(currentMixPath).toLowerCase();
 
-    if (outputExt !== currentExt) {
-      // Convert to desired format
+    // Master bus limiter: final loudnorm + true peak limiting on the complete mix
+    // This ensures the final output has consistent loudness and no digital clipping
+    const masterLimiter = 'loudnorm=I=-14:TP=-1:LRA=11';
+
+    if (outputExt !== currentExt || outputExt === '.mp3') {
+      // Convert to desired format with master limiter
       let codec = 'libmp3lame -q:a 2';
       if (outputExt === '.flac') codec = 'flac';
       if (outputExt === '.wav') codec = 'pcm_s16le';
 
-      await execFFmpegAsync(`ffmpeg -y -i "${currentMixPath}" -codec:a ${codec} "${job.outputPath}"`);
+      await execFFmpegAsync(
+        `ffmpeg -y -i "${currentMixPath}" -af "${masterLimiter}" -codec:a ${codec} "${job.outputPath}"`
+      );
     } else {
-      fs.copyFileSync(currentMixPath, job.outputPath);
+      // Same format but still apply master limiter
+      const codec = currentExt === '.flac' ? 'flac' : 'pcm_s16le';
+      await execFFmpegAsync(
+        `ffmpeg -y -i "${currentMixPath}" -af "${masterLimiter}" -codec:a ${codec} "${job.outputPath}"`
+      );
     }
 
     // Get final duration

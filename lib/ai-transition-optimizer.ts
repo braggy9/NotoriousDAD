@@ -14,7 +14,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { TrackAnalysis, TrackSegment, analyzeTrack } from './beat-analyzer';
 import { MixTrack } from './mix-engine';
-import Anthropic from '@anthropic-ai/sdk';
+
 
 export interface TransitionRecommendation {
   // Timing
