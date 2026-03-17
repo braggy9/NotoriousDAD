@@ -7,7 +7,7 @@ set -e
 # These will be updated after server creation
 SERVER="root@178.156.214.56"
 SERVER_DIR="/var/www/notorious-dad"
-LOCAL_DIR="/Users/tombragg/dj-mix-generator"
+LOCAL_DIR="/Users/tombragg/Developer/dj-mix-generator"
 
 echo "🚀 Deploying Notorious DAD to Hetzner Cloud"
 echo "============================================"
