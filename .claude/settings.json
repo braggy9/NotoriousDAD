@@ -22,5 +22,19 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "NotebookEdit",
+      "Read",
+      "WebFetch",
+      "WebSearch",
+      "Write"
+    ],
+    "defaultMode": "acceptEdits"
   }
 }
